@@ -12,10 +12,12 @@ import type {
   GitHubCodeSearchResult,
   GitHubCommit,
   GitHubContributor,
+  GitHubDetailedIssue,
   GitHubDetailedPullRequest,
   GitHubFileContent,
   GitHubIssue,
   GitHubPullRequest,
+  GitHubPullRequestFile,
   GitHubRelease,
   GitHubRepo,
   GitHubSearchItem,
@@ -333,6 +335,22 @@ export class GitHubClient {
       waitingOn: requestedReviewers.length > 0 ? requestedReviewers : undefined,
       waitingHours,
     };
+  }
+
+  async getPullRequestFiles(repoInput: string, prNumber: number): Promise<GitHubPullRequestFile[]> {
+    const { owner, repo } = this.parseRepoInput(repoInput);
+    const raw = await this.request<any[]>(
+      `/repos/${owner}/${repo}/pulls/${prNumber}/files?per_page=100`,
+    );
+    return raw.map((f) => ({
+      sha: f.sha,
+      filename: f.filename,
+      status: f.status,
+      additions: f.additions || 0,
+      deletions: f.deletions || 0,
+      changes: f.changes || 0,
+      patch: f.patch,
+    }));
   }
 
   async getPullRequests(
@@ -1021,6 +1039,28 @@ export class GitHubClient {
       300,
       cache,
     );
+  }
+
+  async getSingleIssue(repoInput: string, issueNumber: number): Promise<GitHubDetailedIssue> {
+    const { owner, repo } = this.parseRepoInput(repoInput);
+    const raw = await this.request<any>(`/repos/${owner}/${repo}/issues/${issueNumber}`);
+    return {
+      id: raw.id,
+      number: raw.number,
+      title: raw.title,
+      state: raw.state,
+      htmlUrl: raw.html_url,
+      createdAt: raw.created_at,
+      closedAt: raw.closed_at,
+      author: {
+        login: raw.user?.login || "ghost",
+        avatarUrl: raw.user?.avatar_url || "",
+      },
+      commentsCount: raw.comments || 0,
+      isPullRequest: Boolean(raw.pull_request),
+      body: raw.body || "",
+      labels: (raw.labels || []).map((l: any) => (typeof l === "string" ? l : l.name || "")),
+    };
   }
 
   async getContributors(repoInput: string, limit = 15): Promise<GitHubContributor[]> {

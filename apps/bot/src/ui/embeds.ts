@@ -1,8 +1,15 @@
+import type {
+  AiBugfixResult,
+  AiCodeReviewResult,
+  AiExplanationResult,
+  AiSummaryResult,
+} from "@devpulse/ai";
 import type { PersonalStats } from "@devpulse/analytics";
 import { formatBytes, formatDuration } from "@devpulse/core";
 import type {
   GitHubBlameLine,
   GitHubCommit,
+  GitHubDetailedIssue,
   GitHubDetailedPullRequest,
   GitHubFileContent,
   GitHubIssue,
@@ -722,4 +729,324 @@ export function createSecurityAlertEmbed(secret: DetectedSecret): EmbedBuilder {
     .setDescription(
       `A credential pattern matching **${secret.type}** was detected.\n\n**Fingerprint:** \`${secret.fingerprintHash.slice(0, 16)}...\`\n${NF.warning} **Action Required:** Revoke this credential immediately and delete the message below.`,
     );
+}
+
+// 10. AI CODE COPILOT & REVIEWER EMBEDS
+export function createAiReviewEmbed(
+  repo: GitHubRepo,
+  pr: GitHubDetailedPullRequest,
+  review: AiCodeReviewResult,
+): EmbedBuilder {
+  const riskColorAnsi =
+    review.riskLevel === "CRITICAL"
+      ? ANSI.red
+      : review.riskLevel === "HIGH"
+        ? ANSI.red
+        : review.riskLevel === "MEDIUM"
+          ? ANSI.yellow
+          : ANSI.green;
+
+  const riskColorEmbed =
+    review.riskLevel === "CRITICAL"
+      ? Macchiato.red
+      : review.riskLevel === "HIGH"
+        ? Macchiato.maroon
+        : review.riskLevel === "MEDIUM"
+          ? Macchiato.peach
+          : Macchiato.green;
+
+  const verdictAnsi = review.approvedForMerge
+    ? `${ANSI.green}✓ Approved for Merge${ANSI.reset}`
+    : `${ANSI.red}✕ Changes Requested${ANSI.reset}`;
+
+  const critFindings = review.findings.filter(
+    (f) => f.severity === "CRITICAL" || f.severity === "HIGH",
+  );
+  const warnFindings = review.findings.filter(
+    (f) => f.severity === "MEDIUM" || f.severity === "LOW" || f.severity === "INFO",
+  );
+
+  const findingLines: string[] = [];
+  if (review.findings.length === 0) {
+    findingLines.push(
+      tuiLine(`${ANSI.green}✓ Zero vulnerabilities or defects spotted.${ANSI.reset}`),
+    );
+  } else {
+    for (const f of review.findings.slice(0, 4)) {
+      const sevAnsi =
+        f.severity === "CRITICAL"
+          ? `${ANSI.red}[CRIT]`
+          : f.severity === "HIGH"
+            ? `${ANSI.red}[HIGH]`
+            : f.severity === "MEDIUM"
+              ? `${ANSI.yellow}[MED]`
+              : `${ANSI.cyan}[LOW]`;
+      const loc = f.file ? `${f.file}${f.line ? `:${f.line}` : ""}` : "";
+      findingLines.push(
+        tuiLine(
+          `${sevAnsi}${ANSI.reset} ${ANSI.white}${clipAnsi(f.title, 18)}${ANSI.reset} ${ANSI.dim}${clipAnsi(loc, 14)}${ANSI.reset}`,
+        ),
+      );
+    }
+  }
+
+  const tui = renderTuiCard([
+    tuiTopBar("AI COPILOT CODE REVIEW"),
+    tuiPrompt(`gitbot ai review ${repo.fullName} #${pr.number}`),
+    tuiDivider("HEALTH & RISK ASSESSMENT"),
+    tuiRow2(
+      "Risk Level",
+      `${riskColorAnsi}${review.riskLevel}${ANSI.reset}`,
+      "Score",
+      `${review.score}/100`,
+    ),
+    tuiLine(`${ANSI.dim}Meter    :${ANSI.reset} ${renderMeter(review.score, 12)}`),
+    tuiRow2("Verdict", verdictAnsi, "Engine", clipAnsi(review.poweredBy, 12)),
+    tuiDivider(`FINDINGS (${critFindings.length} Crit/High • ${warnFindings.length} Med/Low)`),
+    ...findingLines,
+    tuiBottomBar(),
+  ]);
+
+  let mdDetails = `### ${review.approvedForMerge ? "✅ Approved for Merge" : "⚠️ Issues Detected"} • Quality Score: **${review.score}/100**\n`;
+  mdDetails += `> ${review.summary}\n\n`;
+
+  if (review.findings.length > 0) {
+    mdDetails += `**🔍 Detected Code Smells & Security Advisories:**\n`;
+    for (const f of review.findings.slice(0, 4)) {
+      const icon = f.severity === "CRITICAL" || f.severity === "HIGH" ? "🔴" : "🟡";
+      const loc = f.file ? `\`${f.file}${f.line ? `:${f.line}` : ""}\`` : "";
+      mdDetails += `${icon} **${f.title}** ${loc}\n• ${f.description}\n`;
+      if (f.suggestion) {
+        mdDetails += `  *Fix:* \`${f.suggestion.slice(0, 120)}\`\n`;
+      }
+    }
+    mdDetails += "\n";
+  }
+
+  if (review.diffProposal) {
+    const trimmedDiff = review.diffProposal.slice(0, 600);
+    mdDetails += `**💡 Proposed Unified Diff Fix:**\n\`\`\`diff\n${trimmedDiff}\n\`\`\`\n`;
+  }
+
+  mdDetails += `*⚡ AI Code Review powered by ${review.poweredBy}*`;
+
+  return createBaseEmbed(`${NF.robot} AI Review: ${repo.fullName} #${pr.number}`)
+    .setAuthor({
+      name: `GITBOT Senior Copilot • ${repo.fullName}`,
+      iconURL: repo.owner.avatarUrl,
+      url: pr.htmlUrl,
+    })
+    .setURL(pr.htmlUrl)
+    .setColor(riskColorEmbed)
+    .setDescription(`${tui}\n\n${mdDetails}`);
+}
+
+export function createAiSummaryEmbed(repo: GitHubRepo, summary: AiSummaryResult): EmbedBuilder {
+  const timeframeLabel = summary.timeframe === "week" ? "Weekly Standup" : "Monthly Standup";
+
+  const tui = renderTuiCard([
+    tuiTopBar(`STANDUP CHANGELOG: ${summary.timeframe.toUpperCase()}`),
+    tuiPrompt(`gitbot ai summarize ${repo.fullName} ${summary.timeframe}`),
+    tuiDivider("SHIPPED VELOCITY"),
+    tuiRow2(
+      "Commits",
+      `${ANSI.green}${summary.stats.commitsCount}${ANSI.reset}`,
+      "Merged PRs",
+      `${ANSI.magenta}${summary.stats.prsMergedCount}${ANSI.reset}`,
+    ),
+    tuiRow2(
+      "Authors",
+      `${ANSI.cyan}${summary.stats.activeAuthorsCount}${ANSI.reset}`,
+      "Engine",
+      clipAnsi(summary.poweredBy, 12),
+    ),
+    tuiDivider("HEADLINE"),
+    tuiLine(`${ANSI.yellow}${clipAnsi(summary.headline, 37)}${ANSI.reset}`),
+    tuiBottomBar(),
+  ]);
+
+  let md = `### 📊 ${timeframeLabel} Summary for [${repo.fullName}](${repo.htmlUrl})\n`;
+  md += `> **${summary.headline}**\n\n`;
+
+  if (summary.features.length > 0) {
+    md += `**🚀 New Features & Capabilities:**\n`;
+    for (const feat of summary.features.slice(0, 4)) {
+      md += `• ${feat}\n`;
+    }
+    md += "\n";
+  }
+
+  if (summary.fixes.length > 0) {
+    md += `**🐛 Bug Fixes & Reliability:**\n`;
+    for (const fix of summary.fixes.slice(0, 4)) {
+      md += `• ${fix}\n`;
+    }
+    md += "\n";
+  }
+
+  if (summary.perfAndChores.length > 0) {
+    md += `**⚡ Maintenance & Performance:**\n`;
+    for (const chore of summary.perfAndChores.slice(0, 3)) {
+      md += `• ${chore}\n`;
+    }
+    md += "\n";
+  }
+
+  if (summary.topContributors.length > 0) {
+    md += `**👥 Core Contributors:** ${summary.topContributors.map((c) => `\`${c}\``).join(", ")}\n\n`;
+  }
+
+  md += `*⚡ Changelog & Standup analysis powered by ${summary.poweredBy}*`;
+
+  return createBaseEmbed(`${NF.sparkle} Standup Changelog: ${repo.fullName} (${summary.timeframe})`)
+    .setAuthor({
+      name: `GITBOT Standup Copilot • ${repo.fullName}`,
+      iconURL: repo.owner.avatarUrl,
+      url: repo.htmlUrl,
+    })
+    .setURL(repo.htmlUrl)
+    .setColor(Macchiato.teal)
+    .setDescription(`${tui}\n\n${md}`);
+}
+
+export function createAiBugfixEmbed(
+  repo: GitHubRepo,
+  issue: GitHubDetailedIssue,
+  bugfix: AiBugfixResult,
+): EmbedBuilder {
+  const confAnsi =
+    bugfix.confidence === "HIGH"
+      ? `${ANSI.green}HIGH`
+      : bugfix.confidence === "MEDIUM"
+        ? `${ANSI.yellow}MEDIUM`
+        : `${ANSI.red}LOW`;
+
+  const confColor =
+    bugfix.confidence === "HIGH"
+      ? Macchiato.green
+      : bugfix.confidence === "MEDIUM"
+        ? Macchiato.peach
+        : Macchiato.red;
+
+  const loc = `${bugfix.targetFile}${bugfix.targetLine ? `:${bugfix.targetLine}` : ""}`;
+
+  const tui = renderTuiCard([
+    tuiTopBar("DIAGNOSTIC & REPAIR COPILOT"),
+    tuiPrompt(`gitbot ai bugfix ${repo.fullName} #${issue.number}`),
+    tuiDivider("TRIAGE & TARGET"),
+    tuiLine(
+      `${ANSI.dim}Issue   :${ANSI.reset} ${ANSI.cyan}#${issue.number}${ANSI.reset} ${clipAnsi(issue.title, 26)}`,
+    ),
+    tuiLine(`${ANSI.dim}Target  :${ANSI.reset} ${ANSI.yellow}${clipAnsi(loc, 30)}${ANSI.reset}`),
+    tuiRow2("Confidence", `${confAnsi}${ANSI.reset}`, "Engine", clipAnsi(bugfix.poweredBy, 12)),
+    tuiDivider("ROOT CAUSE"),
+    tuiLine(`${ANSI.white}${clipAnsi(bugfix.rootCause, 37)}${ANSI.reset}`),
+    tuiBottomBar(),
+  ]);
+
+  let md = `### 🩺 Root Cause Diagnosis for [#${issue.number}](${issue.htmlUrl})\n`;
+  md += `> **${bugfix.rootCause}**\n\n`;
+  md += `**🎯 Identified Culprit:** \`${loc}\` (Confidence: **${bugfix.confidence}**)\n\n`;
+  md += `**📝 Solution Explanation:**\n${bugfix.explanation}\n\n`;
+
+  if (bugfix.proposedPatch) {
+    const trimmedPatch = bugfix.proposedPatch.slice(0, 700);
+    md += `**🛠️ Proposed Remediation Patch:**\n\`\`\`diff\n${trimmedPatch}\n\`\`\`\n`;
+  }
+
+  if (bugfix.testSuggestions.length > 0) {
+    md += `**🧪 Suggested Verification Tests:**\n`;
+    for (const test of bugfix.testSuggestions) {
+      md += `• \`${test}\`\n`;
+    }
+    md += "\n";
+  }
+
+  md += `*⚡ Bugfix synthesis powered by ${bugfix.poweredBy}*`;
+
+  return createBaseEmbed(`${NF.tools} AI Bugfix: ${repo.fullName} #${issue.number}`)
+    .setAuthor({
+      name: `GITBOT Diagnostic Copilot • ${repo.fullName}`,
+      iconURL: repo.owner.avatarUrl,
+      url: issue.htmlUrl,
+    })
+    .setURL(issue.htmlUrl)
+    .setColor(confColor)
+    .setDescription(`${tui}\n\n${md}`);
+}
+
+export function createAiExplainEmbed(
+  repo: GitHubRepo,
+  file: GitHubFileContent,
+  explanation: AiExplanationResult,
+  line?: number,
+): EmbedBuilder {
+  const complexityAnsi =
+    explanation.complexity === "High"
+      ? `${ANSI.red}High`
+      : explanation.complexity === "Moderate"
+        ? `${ANSI.yellow}Moderate`
+        : `${ANSI.green}Low`;
+
+  const complexityColor =
+    explanation.complexity === "High"
+      ? Macchiato.red
+      : explanation.complexity === "Moderate"
+        ? Macchiato.peach
+        : Macchiato.blue;
+
+  const loc = `${file.path}${line ? ` (L${line})` : ""}`;
+
+  const tui = renderTuiCard([
+    tuiTopBar("CODE ARCHITECTURE EXPLAINER"),
+    tuiPrompt(`gitbot ai explain ${repo.fullName} ${file.path}`),
+    tuiDivider("SOURCE SPECIFICATION"),
+    tuiLine(`${ANSI.dim}File       :${ANSI.reset} ${ANSI.cyan}${clipAnsi(loc, 28)}${ANSI.reset}`),
+    tuiRow2("Complexity", `${complexityAnsi}${ANSI.reset}`, "Size", formatBytes(file.size)),
+    tuiRow2(
+      "Engine",
+      clipAnsi(explanation.poweredBy, 12),
+      "Language",
+      clipAnsi(file.name.split(".").pop() || "code", 10),
+    ),
+    tuiDivider("ARCHITECTURAL ROLE"),
+    tuiLine(`${ANSI.white}${clipAnsi(explanation.architectureRole, 37)}${ANSI.reset}`),
+    tuiBottomBar(),
+  ]);
+
+  let md = `### 🧠 Code Analysis: [${file.path}](${file.htmlUrl})\n`;
+  md += `> **Architecture Role:** ${explanation.architectureRole}\n\n`;
+  md += `**📖 Summary:**\n${explanation.summary}\n\n`;
+
+  if (explanation.keyComponents.length > 0) {
+    md += `**🧩 Key Components & Responsibilities:**\n`;
+    for (const comp of explanation.keyComponents.slice(0, 4)) {
+      md += `• **\`${comp.name}\`**: ${comp.purpose}\n`;
+    }
+    md += "\n";
+  }
+
+  if (explanation.dependencies.length > 0) {
+    md += `**📦 Dependencies:** ${explanation.dependencies.map((d) => `\`${d}\``).join(", ")}\n\n`;
+  }
+
+  if (explanation.securityConsiderations.length > 0) {
+    md += `**🛡️ Security & Performance Considerations:**\n`;
+    for (const sec of explanation.securityConsiderations.slice(0, 3)) {
+      md += `• ${sec}\n`;
+    }
+    md += "\n";
+  }
+
+  md += `*⚡ Code intelligence powered by ${explanation.poweredBy}*`;
+
+  return createBaseEmbed(`${NF.terminal} Code Explanation: ${file.name}`)
+    .setAuthor({
+      name: `GITBOT Intelligence Copilot • ${repo.fullName}`,
+      iconURL: repo.owner.avatarUrl,
+      url: file.htmlUrl,
+    })
+    .setURL(file.htmlUrl)
+    .setColor(complexityColor)
+    .setDescription(`${tui}\n\n${md}`);
 }

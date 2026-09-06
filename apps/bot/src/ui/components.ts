@@ -99,6 +99,47 @@ export function createDeleteSecretButton(messageId: string): ActionRowBuilder<Bu
   );
 }
 
+export function createAiReviewActionButtons(
+  owner: string,
+  repo: string,
+  prNumber: number,
+  prUrl: string,
+  approvedForMerge: boolean,
+): ActionRowBuilder<ButtonBuilder>[] {
+  const row = new ActionRowBuilder<ButtonBuilder>();
+  if (approvedForMerge) {
+    row.addComponents(
+      new ButtonBuilder()
+        .setCustomId(`pr:merge:${owner}:${repo}:${prNumber}`)
+        .setLabel(`${NF.gitMerge} Fast-Forward Merge`)
+        .setStyle(ButtonStyle.Success),
+    );
+  }
+  row.addComponents(
+    new ButtonBuilder()
+      .setCustomId(`pr:approve:${owner}:${repo}:${prNumber}`)
+      .setLabel(`${NF.check} Approve PR`)
+      .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setLabel("🌐 View on GitHub ↗").setStyle(ButtonStyle.Link).setURL(prUrl),
+  );
+  return [row];
+}
+
+export function createAiBugfixActionButtons(
+  _owner: string,
+  _repo: string,
+  _issueNumber: number,
+  issueUrl: string,
+): ActionRowBuilder<ButtonBuilder>[] {
+  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setLabel("🐞 View Issue on GitHub ↗")
+      .setStyle(ButtonStyle.Link)
+      .setURL(issueUrl),
+  );
+  return [row];
+}
+
 export function createHelpSelect(): ActionRowBuilder<StringSelectMenuBuilder> {
   const menu = new StringSelectMenuBuilder()
     .setCustomId("help:category_select")
@@ -113,27 +154,31 @@ export function createHelpSelect(): ActionRowBuilder<StringSelectMenuBuilder> {
         .setDescription("Stale detection, CI checks, diffs, 1-click merge")
         .setValue("pr"),
       new StringSelectMenuOptionBuilder()
-        .setLabel(`${NF.search} 3. GitHub Search Engine (/search)`)
+        .setLabel(`${NF.sparkle} 3. AI Copilot & Reviewer (/ai)`)
+        .setDescription("Automated code reviews, standup summaries, bugfixes")
+        .setValue("ai"),
+      new StringSelectMenuOptionBuilder()
+        .setLabel(`${NF.search} 4. GitHub Search Engine (/search)`)
         .setDescription("Code, issues, PRs, repos, commits qualifiers")
         .setValue("search"),
       new StringSelectMenuOptionBuilder()
-        .setLabel(`${NF.terminal} 4. Code Intelligence (/code & /why)`)
+        .setLabel(`${NF.terminal} 5. Code Intelligence (/code & /why)`)
         .setDescription("File inspection, blame, PR link tracing")
         .setValue("code"),
       new StringSelectMenuOptionBuilder()
-        .setLabel(`${NF.speedometer} 5. Investigation (/investigate)`)
+        .setLabel(`${NF.speedometer} 6. Investigation (/investigate)`)
         .setDescription("Lifecycle timeline: Issue -> Commit -> PR -> Release")
         .setValue("investigate"),
       new StringSelectMenuOptionBuilder()
-        .setLabel(`${NF.robot} 6. Actions Control Center (/actions)`)
+        .setLabel(`${NF.robot} 7. Actions Control Center (/actions)`)
         .setDescription("Visual tree, run inspection, rerun & cancel")
         .setValue("actions"),
       new StringSelectMenuOptionBuilder()
-        .setLabel(`${NF.shield} 7. Security Center (/security)`)
+        .setLabel(`${NF.shield} 8. Security Center (/security)`)
         .setDescription("Dependabot alerts, advisories, CVE breakdown")
         .setValue("security"),
       new StringSelectMenuOptionBuilder()
-        .setLabel(`${NF.warning} 8. Watchtower Alerts (/watch)`)
+        .setLabel(`${NF.warning} 9. Watchtower Alerts (/watch)`)
         .setDescription("Automated Discord alerts for releases, PRs, issues")
         .setValue("watch"),
     );

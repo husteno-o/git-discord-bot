@@ -1,5 +1,6 @@
 import { actionsCommand } from "./actions.js";
 import { activityCommand } from "./activity.js";
+import { aiCommand } from "./ai.js";
 import { askCommand } from "./ask.js";
 import { codeCommand } from "./code.js";
 import { connectCommand } from "./connect.js";
@@ -22,6 +23,7 @@ import { whyCommand } from "./why.js";
 export const commands: Command[] = [
   repoCommand,
   prCommand,
+  aiCommand,
   searchCommand,
   codeCommand,
   investigateCommand,

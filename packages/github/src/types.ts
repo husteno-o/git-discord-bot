@@ -324,3 +324,18 @@ export interface RepoGrowthMetrics {
   openIssuesDelta30d: number;
   prsMerged30d: number;
 }
+
+export interface GitHubPullRequestFile {
+  sha: string;
+  filename: string;
+  status: "added" | "removed" | "modified" | "renamed";
+  additions: number;
+  deletions: number;
+  changes: number;
+  patch?: string;
+}
+
+export interface GitHubDetailedIssue extends GitHubIssue {
+  body?: string;
+  labels: string[];
+}

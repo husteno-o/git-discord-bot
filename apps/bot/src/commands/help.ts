@@ -38,6 +38,16 @@ export function getModuleHelpEmbed(moduleName: string) {
         ["/pr waiting <repo>", "Waiting on reviewers (> 24h)"],
       ],
     },
+    ai: {
+      title: "AI COPILOT & REVIEWER",
+      synopsis: "Automated PR reviews, changelog standups, bugfixes & explain",
+      commands: [
+        ["/ai review <repo> <pr>", "Automated code review & diff fix"],
+        ["/ai summarize <repo> [timeframe]", "Weekly/monthly standup summary"],
+        ["/ai bugfix <repo> <issue>", "Diagnose stack trace & suggest patch"],
+        ["/ai explain <repo> <file> [line]", "Architectural breakdown & complexity"],
+      ],
+    },
     search: {
       title: "GITHUB POWER SEARCH",
       synopsis: "Full GitHub qualifier search from Discord",
@@ -130,25 +140,28 @@ export function createHelpDashboardEmbed() {
       `${ANSI.dim}02${ANSI.reset} ${ANSI.cyan}pr      ${ANSI.reset} ${ANSI.white}/pr <view|list|review>${ANSI.reset}`,
     ),
     tuiLine(
-      `${ANSI.dim}03${ANSI.reset} ${ANSI.blue}search  ${ANSI.reset} ${ANSI.white}/search <code|issues|prs>${ANSI.reset}`,
+      `${ANSI.dim}03${ANSI.reset} ${ANSI.yellow}ai      ${ANSI.reset} ${ANSI.white}/ai <review|summarize|bugfix>${ANSI.reset}`,
     ),
     tuiLine(
-      `${ANSI.dim}04${ANSI.reset} ${ANSI.green}code    ${ANSI.reset} ${ANSI.white}/code view, /code blame${ANSI.reset}`,
+      `${ANSI.dim}04${ANSI.reset} ${ANSI.blue}search  ${ANSI.reset} ${ANSI.white}/search <code|issues|prs>${ANSI.reset}`,
     ),
     tuiLine(
-      `${ANSI.dim}05${ANSI.reset} ${ANSI.yellow}trace   ${ANSI.reset} ${ANSI.white}/why, /investigate${ANSI.reset}`,
+      `${ANSI.dim}05${ANSI.reset} ${ANSI.green}code    ${ANSI.reset} ${ANSI.white}/code view, /code blame${ANSI.reset}`,
     ),
     tuiLine(
-      `${ANSI.dim}06${ANSI.reset} ${ANSI.magenta}stats   ${ANSI.reset} ${ANSI.white}/activity, /team${ANSI.reset}`,
+      `${ANSI.dim}06${ANSI.reset} ${ANSI.magenta}trace   ${ANSI.reset} ${ANSI.white}/why, /investigate${ANSI.reset}`,
     ),
     tuiLine(
-      `${ANSI.dim}07${ANSI.reset} ${ANSI.cyan}radar   ${ANSI.reset} ${ANSI.white}/trending, /watch${ANSI.reset}`,
+      `${ANSI.dim}07${ANSI.reset} ${ANSI.cyan}stats   ${ANSI.reset} ${ANSI.white}/activity, /team${ANSI.reset}`,
     ),
     tuiLine(
-      `${ANSI.dim}08${ANSI.reset} ${ANSI.blue}actions ${ANSI.reset} ${ANSI.white}/actions status, /release${ANSI.reset}`,
+      `${ANSI.dim}08${ANSI.reset} ${ANSI.blue}radar   ${ANSI.reset} ${ANSI.white}/trending, /watch${ANSI.reset}`,
     ),
     tuiLine(
-      `${ANSI.dim}09${ANSI.reset} ${ANSI.green}secure  ${ANSI.reset} ${ANSI.white}/security audit, /connect${ANSI.reset}`,
+      `${ANSI.dim}09${ANSI.reset} ${ANSI.green}actions ${ANSI.reset} ${ANSI.white}/actions status, /release${ANSI.reset}`,
+    ),
+    tuiLine(
+      `${ANSI.dim}10${ANSI.reset} ${ANSI.yellow}secure  ${ANSI.reset} ${ANSI.white}/security audit, /connect${ANSI.reset}`,
     ),
     tuiDivider("COMMAND CENTER"),
     tuiLine(`${ANSI.dim}Select a module below or type a command${ANSI.reset}`),
