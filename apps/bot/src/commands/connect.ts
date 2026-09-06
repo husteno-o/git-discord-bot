@@ -3,6 +3,7 @@ import { SlashCommandBuilder } from "discord.js";
 import { eq } from "drizzle-orm";
 import { BrandColors } from "../ui/colors.js";
 import { createBaseEmbed, createConnectStatusEmbed, createErrorEmbed } from "../ui/embeds.js";
+import { NF } from "../ui/icons.js";
 import type { Command } from "./types.js";
 
 export const connectCommand: Command = {
@@ -64,7 +65,7 @@ export const connectCommand: Command = {
           });
         }
 
-        const embed = createBaseEmbed("🔐 GitHub Account Linked")
+        const embed = createBaseEmbed(`${NF.shield} GitHub Account Linked`)
           .setColor(BrandColors.success)
           .setDescription(
             `Successfully linked your Discord account to GitHub user **[@${username}](https://github.com/${username})**!\n\n**Security & Least-Privilege Policy:**\n• Public repositories work instantly with zero permissions required.\n• Your personal access is completely isolated from other server members.\n• No personal access tokens or passwords are ever requested or logged.\n\nRun \`/home\` or \`/activity me\` to start your daily workflow!`,
@@ -80,7 +81,7 @@ export const connectCommand: Command = {
         });
 
         if (!dbUser?.githubUsername) {
-          const embed = createBaseEmbed("🐙 GitHub Connection").setDescription(
+          const embed = createBaseEmbed(`${NF.github} GitHub Connection`).setDescription(
             "You have not connected a GitHub account yet. Use `/connect github <username>` to connect.",
           );
           await interaction.editReply({ embeds: [embed] });
@@ -105,7 +106,7 @@ export const connectCommand: Command = {
           })
           .where(eq(users.id, userId));
 
-        const embed = createBaseEmbed("👋 GitHub Account Disconnected")
+        const embed = createBaseEmbed(`${NF.user} GitHub Account Disconnected`)
           .setColor(BrandColors.secondary)
           .setDescription(
             "Your GitHub account has been disconnected and all associated credentials purged from memory and database.",

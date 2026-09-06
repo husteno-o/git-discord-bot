@@ -3,85 +3,116 @@ import { BrandColors } from "../ui/colors.js";
 import { createHelpSelect } from "../ui/components.js";
 import { createBaseEmbed } from "../ui/embeds.js";
 import { NF } from "../ui/icons.js";
+import {
+  renderTuiCard,
+  tuiBottomBar,
+  tuiDivider,
+  tuiLine,
+  tuiPrompt,
+  tuiTopBar,
+} from "../ui/tui.js";
 import type { Command } from "./types.js";
 
 export function getModuleHelpEmbed(moduleName: string) {
-  const map: Record<string, { title: string; desc: string; commands: string }> = {
+  const map: Record<string, { title: string; synopsis: string; commands: [string, string][] }> = {
     repo: {
-      title: `${NF.github} Repository Intelligence (/repo)`,
-      desc: "Comprehensive insights, health scores, and dependency analysis for any GitHub repository.",
-      commands:
-        `• \`/repo <owner/repo> [view]\` ${NF.arrowRight} Master repository intelligence dashboard with navigation buttons\n` +
-        `• \`/repo <owner/repo> view:health\` ${NF.arrowRight} Health score (0-100) with Activity, CI, and Maintenance bars\n` +
-        `• \`/repo <owner/repo> view:dependencies\` ${NF.arrowRight} Dependency graph, manifest check, and package alerts\n` +
-        `• \`/repo <owner/repo> view:growth\` ${NF.arrowRight} 30-day velocity, star acceleration, and PR throughput`,
+      title: "REPO INTELLIGENCE",
+      synopsis: "Deep repository metrics, health score & dependencies",
+      commands: [
+        ["/repo <repo>", "Master telemetry dashboard"],
+        ["/repo <repo> view:health", "Health breakdown & audit"],
+        ["/repo <repo> view:dependencies", "Package manifest & CVEs"],
+        ["/repo <repo> view:growth", "30-day velocity & stars"],
+      ],
     },
     pr: {
-      title: `${NF.gitPullRequest} Pull Request Power Tools (/pr)`,
-      desc: "Inspect, review, merge, and unblock pull requests directly from Discord without opening tabs.",
-      commands:
-        `• \`/pr view <repo> <number>\` ${NF.arrowRight} Detailed status, line diffs, CI checks, cycle time, and action buttons\n` +
-        `• \`/pr list <repo> [state]\` ${NF.arrowRight} List open or closed pull requests\n` +
-        `• \`/pr review <repo> <number> <action>\` ${NF.arrowRight} Submit review: Approve, Request Changes, or Comment\n` +
-        `• \`/pr merge <repo> <number> [method]\` ${NF.arrowRight} 1-click merge with merge, squash, or rebase strategies\n` +
-        `• \`/pr stale <repo>\` ${NF.arrowRight} Detect pull requests with no activity for > 14 days\n` +
-        `• \`/pr waiting <repo>\` ${NF.arrowRight} Detect pull requests waiting on reviewers for > 24 hours`,
+      title: "PULL REQUEST TOOLS",
+      synopsis: "Inspect, review, merge & unblock PRs in chat",
+      commands: [
+        ["/pr view <repo> <num>", "Diffs, checks, cycle time"],
+        ["/pr list <repo> [state]", "List open or closed PRs"],
+        ["/pr review <repo> <num>", "Approve, request changes"],
+        ["/pr merge <repo> <num>", "1-click instant merge"],
+        ["/pr stale <repo>", "Detect stale PRs (> 14d)"],
+        ["/pr waiting <repo>", "Waiting on reviewers (> 24h)"],
+      ],
     },
     search: {
-      title: `${NF.search} GitHub Power Search Engine (/search)`,
-      desc: "Turn Discord into a native GitHub search console with full qualifiers.",
-      commands:
-        `• \`/search code <query> [repo]\` ${NF.arrowRight} Search code files across repositories\n` +
-        `• \`/search issues <query> [repo]\` ${NF.arrowRight} Search issues with qualifiers (e.g. \`auth is:open\`)\n` +
-        `• \`/search prs <query> [repo]\` ${NF.arrowRight} Search pull requests (e.g. \`author:@me is:merged\`)\n` +
-        `• \`/search repos <query>\` ${NF.arrowRight} Search repositories by stars, language, or topic\n` +
-        `• \`/search commits <query> [repo]\` ${NF.arrowRight} Search commit messages across GitHub`,
+      title: "GITHUB POWER SEARCH",
+      synopsis: "Full GitHub qualifier search from Discord",
+      commands: [
+        ["/search code <q> [repo]", "Search codebase files"],
+        ["/search issues <q>", "Search issues with filters"],
+        ["/search prs <q>", "Search pull requests"],
+        ["/search repos <q>", "Search repos by stars/lang"],
+        ["/search commits <q>", "Search commit history"],
+      ],
     },
     code: {
-      title: `${NF.terminal} Code Intelligence (/code & /why)`,
-      desc: "Inspect file contents, blame lines, and trace the historical reasons for changes.",
-      commands:
-        `• \`/code view <repo> <path> [ref]\` ${NF.arrowRight} View file contents, line count, and last commit\n` +
-        `• \`/code blame <repo> <path> [line]\` ${NF.arrowRight} Inspect line blame: author, commit SHA, and connected PR\n` +
-        `• \`/why <repo> <path> [line]\` ${NF.arrowRight} Trace history: File ${NF.arrowRight} Commit ${NF.arrowRight} PR ${NF.arrowRight} Issue ${NF.arrowRight} Decision`,
+      title: "CODE INTELLIGENCE",
+      synopsis: "File inspection, git blame & historical tracing",
+      commands: [
+        ["/code view <repo> <path>", "File contents & commit"],
+        ["/code blame <repo> <path>", "Blame author & PR link"],
+        ["/why <repo> <path> [line]", "Trace File -> Commit -> PR"],
+      ],
     },
     investigate: {
-      title: `${NF.speedometer} GitHub Investigation (/investigate)`,
-      desc: "Connect chronological lifecycle timelines to understand why code was introduced or resolved.",
-      commands:
-        `• \`/investigate issue <repo> <number>\` ${NF.arrowRight} Builds Issue ${NF.arrowRight} Commit ${NF.arrowRight} PR ${NF.arrowRight} Review ${NF.arrowRight} Merge ${NF.arrowRight} Release timeline\n` +
-        `• \`/investigate pr <repo> <number>\` ${NF.arrowRight} Builds PR Opened ${NF.arrowRight} Review ${NF.arrowRight} Fix Commits ${NF.arrowRight} Merge ${NF.arrowRight} Tag timeline`,
+      title: "INVESTIGATION ENGINE",
+      synopsis: "Connect chronological lifecycle timelines",
+      commands: [
+        ["/investigate issue <repo>", "Issue -> Commit -> Release"],
+        ["/investigate pr <repo>", "Trace review -> merge lifecycle"],
+      ],
     },
     actions: {
-      title: `${NF.robot} GitHub Actions Control Center (/actions)`,
-      desc: "Visual CI/CD status trees, run history, and workflow reruns.",
-      commands:
-        `• \`/actions status <repo>\` ${NF.arrowRight} Visual tree: \`main ├── CI ${NF.check} ├── Tests ${NF.check} ├── Build ${NF.cross}\`\n` +
-        `• \`/actions runs <repo>\` ${NF.arrowRight} List recent workflow runs with branches and commit SHAs\n` +
-        `• \`/actions rerun <repo> <run_id>\` ${NF.arrowRight} Trigger rerun for a failed workflow\n` +
-        `• \`/actions cancel <repo> <run_id>\` ${NF.arrowRight} Cancel an in-progress workflow run`,
+      title: "ACTIONS CI/CD CENTER",
+      synopsis: "Workflow run status trees, reruns & cancels",
+      commands: [
+        ["/actions status <repo>", "Visual tree of CI checks"],
+        ["/actions runs <repo>", "List recent workflow runs"],
+        ["/actions rerun <repo> <id>", "Trigger failed workflow rerun"],
+        ["/actions cancel <repo>", "Cancel active workflow run"],
+      ],
     },
     security: {
-      title: `${NF.shield} GitHub Security Center (/security)`,
-      desc: "Dependabot alerts, security advisories, and vulnerable dependency breakdown.",
-      commands: `• \`/security audit <repo>\` ${NF.arrowRight} Audit repository for Critical, High, Medium, and Low CVEs`,
+      title: "SECURITY AUDITOR",
+      synopsis: "Dependabot alerts & vulnerable packages",
+      commands: [["/security audit <repo>", "Scan for Critical/High CVEs"]],
     },
     watch: {
-      title: `${NF.warning} GitHub Watchtower (/watch)`,
-      desc: "Subscribe Discord channels to automated notifications for releases, PRs, and security alerts.",
-      commands:
-        `• \`/watch release <repo> [channel]\` ${NF.arrowRight} Automatic alert when a new release is published\n` +
-        `• \`/watch pr <repo> [channel]\` ${NF.arrowRight} Automatic alert when pull requests are opened\n` +
-        `• \`/watch security <repo> [channel]\` ${NF.arrowRight} Automatic alert for new security advisories\n` +
-        `• \`/watch list\` ${NF.arrowRight} View all active watch subscriptions in this server\n` +
-        `• \`/watch remove <id>\` ${NF.arrowRight} Unsubscribe from a watch`,
+      title: "WATCHTOWER ALERTS",
+      synopsis: "Automated channel alerts for releases & PRs",
+      commands: [
+        ["/watch release <repo>", "Post new GitHub releases"],
+        ["/watch pr <repo>", "Post newly opened PRs"],
+        ["/watch security <repo>", "Post new security advisories"],
+        ["/watch list", "List active subscriptions"],
+        ["/watch remove <id>", "Unsubscribe alert channel"],
+      ],
     },
   };
 
   const info = map[moduleName] || map.repo;
-  return createBaseEmbed(info.title)
+  const tuiLines: string[] = [
+    tuiTopBar(`MAN: ${info.title}`),
+    tuiPrompt(`gitbot man ${moduleName}`),
+    tuiDivider("SYNOPSIS"),
+    tuiLine(info.synopsis),
+    tuiDivider("COMMAND SUITE"),
+  ];
+
+  for (const [cmd, desc] of info.commands) {
+    tuiLines.push(tuiLine(cmd));
+    tuiLines.push(tuiLine(`  ▸ ${desc}`));
+  }
+
+  tuiLines.push(tuiBottomBar());
+  const tui = renderTuiCard(tuiLines);
+
+  return createBaseEmbed(`${NF.terminal} Manual: ${info.title}`)
     .setColor(BrandColors.primary)
-    .setDescription(`${info.desc}\n\n**Available Commands:**\n${info.commands}`);
+    .setDescription(tui);
 }
 
 export const helpCommand: Command = {
@@ -90,60 +121,28 @@ export const helpCommand: Command = {
     .setDescription("Explore GITBOT GitHub Power-User feature sets and command suites"),
 
   async execute(interaction) {
-    const embed = createBaseEmbed(`${NF.github} GITBOT — GitHub Developer Operating System`)
+    const tui = renderTuiCard([
+      tuiTopBar("GITBOT TERMINAL v2.4.0"),
+      tuiPrompt("gitbot --help"),
+      tuiDivider("ACTIVE SUBSYSTEMS"),
+      tuiLine("[1] REPO    : /repo <target> [view]"),
+      tuiLine("[2] PR      : /pr <view|list|review>"),
+      tuiLine("[3] SEARCH  : /search <code|issues|prs>"),
+      tuiLine("[4] CODE    : /code view, /code blame"),
+      tuiLine("[5] TRACE   : /why, /investigate"),
+      tuiLine("[6] METRICS : /activity, /team"),
+      tuiLine("[7] RADAR   : /trending, /watch"),
+      tuiLine("[8] CI/CD   : /actions status, /release"),
+      tuiLine("[9] SECURE  : /security audit, /connect"),
+      tuiDivider("COMMAND CENTER"),
+      tuiLine("▸ Terminal CLI engineered for Discord"),
+      tuiLine("▸ Select a manual below or run command"),
+      tuiBottomBar(),
+    ]);
+
+    const embed = createBaseEmbed(`${NF.github} GITBOT Developer Center`)
       .setColor(BrandColors.primary)
-      .setDescription(
-        "Welcome to **GITBOT**, the Discord command center engineered so developers never have to leave chat for GitHub workflows.\n\n" +
-          "Select a module from the menu below or execute any power command directly:",
-      )
-      .addFields(
-        {
-          name: `${NF.github} 1. Repository Intelligence`,
-          value: "`/repo <repository>`, `/repo view:health`, `/repo view:growth`",
-          inline: false,
-        },
-        {
-          name: `${NF.gitPullRequest} 2. Pull Request Power Tools`,
-          value: "`/pr view`, `/pr list`, `/pr review`, `/pr merge`, `/pr stale`, `/pr waiting`",
-          inline: false,
-        },
-        {
-          name: `${NF.search} 3. GitHub Power Search`,
-          value:
-            "`/search code`, `/search issues`, `/search prs`, `/search repos`, `/search commits`",
-          inline: false,
-        },
-        {
-          name: `${NF.terminal} 4. Code Intelligence & History`,
-          value: "`/code view`, `/code blame`, `/why <repo> <path> [line]`",
-          inline: false,
-        },
-        {
-          name: `${NF.speedometer} 5. GitHub Investigation`,
-          value: "`/investigate issue <repo> <num>`, `/investigate pr <repo> <num>`",
-          inline: false,
-        },
-        {
-          name: `${NF.clock} 6. Activity & Analytics`,
-          value: "`/activity user`, `/activity repo`, `/activity me`, `/team dashboard`",
-          inline: false,
-        },
-        {
-          name: `${NF.flame} 7. GitHub Radar & Watchtower`,
-          value: "`/trending [language]`, `/watch release`, `/watch pr`, `/watch security`",
-          inline: false,
-        },
-        {
-          name: `${NF.robot} 8. Actions & Releases`,
-          value: "`/actions status`, `/actions runs`, `/release latest`, `/release notes`",
-          inline: false,
-        },
-        {
-          name: `${NF.shield} 9. Security & Authentication`,
-          value: "`/security audit`, `/connect github`, `/connect status`, `/home`, `/tools`",
-          inline: false,
-        },
-      );
+      .setDescription(tui);
 
     const components = [createHelpSelect()];
     await interaction.reply({ embeds: [embed], components });

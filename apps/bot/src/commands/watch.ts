@@ -4,6 +4,7 @@ import { ChannelType, PermissionFlagsBits, SlashCommandBuilder } from "discord.j
 import { and, eq } from "drizzle-orm";
 import { BrandColors } from "../ui/colors.js";
 import { createBaseEmbed, createErrorEmbed } from "../ui/embeds.js";
+import { NF } from "../ui/icons.js";
 import type { Command } from "./types.js";
 
 export const watchCommand: Command = {
@@ -93,7 +94,9 @@ export const watchCommand: Command = {
             `• \`${n.id.slice(0, 8)}\` — **${n.type.replace("github_", "").toUpperCase()}** for \`${n.target}\` in <#${n.channelId}>`,
         );
 
-        const embed = createBaseEmbed("🚨 GitHub Watchtower Subscriptions").setDescription(
+        const embed = createBaseEmbed(
+          `${NF.warning} GitHub Watchtower Subscriptions`,
+        ).setDescription(
           lines.length > 0
             ? lines.join("\n")
             : "No active watchtower subscriptions configured in this server.",
@@ -107,7 +110,7 @@ export const watchCommand: Command = {
         await db
           .delete(notifications)
           .where(and(eq(notifications.guildId, guildId), eq(notifications.id, id)));
-        const embed = createBaseEmbed("✅ Watchtower Subscription Removed")
+        const embed = createBaseEmbed(`${NF.check} Watchtower Subscription Removed`)
           .setColor(BrandColors.success)
           .setDescription(`Subscription \`${id}\` was successfully removed.`);
         await interaction.editReply({ embeds: [embed] });
@@ -140,7 +143,7 @@ export const watchCommand: Command = {
         isEnabled: true,
       });
 
-      const embed = createBaseEmbed("🚨 Watchtower Subscription Active")
+      const embed = createBaseEmbed(`${NF.warning} Watchtower Subscription Active`)
         .setColor(BrandColors.success)
         .setDescription(
           `Now monitoring [**${fullTarget}**](https://github.com/${fullTarget}) for **${subcommand.toUpperCase()}** events!\n\n` +

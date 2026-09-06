@@ -2,6 +2,7 @@ import { githubClient } from "@devpulse/github";
 import { SlashCommandBuilder } from "discord.js";
 import { BrandColors } from "../ui/colors.js";
 import { createBaseEmbed, createErrorEmbed } from "../ui/embeds.js";
+import { NF } from "../ui/icons.js";
 import type { Command } from "./types.js";
 
 export const askCommand: Command = {
@@ -30,7 +31,7 @@ export const askCommand: Command = {
     try {
       const result = await githubClient.queryAsk(question, repoInput);
 
-      const embed = createBaseEmbed(`🧠 GitHub Query: "${question}"`)
+      const embed = createBaseEmbed(`${NF.terminal} GitHub Query: "${question}"`)
         .setColor(BrandColors.primary)
         .setDescription(
           `${result.answer}\n\n${result.items ? result.items.join("\n") : ""}\n\n*Answers are computed deterministically from live GitHub repository telemetry.*`,

@@ -1,6 +1,7 @@
 import { githubClient } from "@devpulse/github";
 import { SlashCommandBuilder } from "discord.js";
 import { createBaseEmbed, createErrorEmbed, createReleaseNotesEmbed } from "../ui/embeds.js";
+import { NF } from "../ui/icons.js";
 import type { Command } from "./types.js";
 
 export const releaseCommand: Command = {
@@ -51,7 +52,7 @@ export const releaseCommand: Command = {
       if (subcommand === "latest") {
         const releases = await githubClient.getReleases(repoInput, 1);
         if (releases.length === 0) {
-          const embed = createBaseEmbed(`🏷️ Releases: ${repoInput}`).setDescription(
+          const embed = createBaseEmbed(`${NF.gitTag} Releases: ${repoInput}`).setDescription(
             "No releases published in this repository yet.",
           );
           await interaction.editReply({ embeds: [embed] });
@@ -62,7 +63,9 @@ export const releaseCommand: Command = {
         const bodySnippet = latest.body
           ? `${latest.body.slice(0, 400)}...`
           : "No release notes provided.";
-        const embed = createBaseEmbed(`🏷️ Latest Release: ${latest.name} (${latest.tagName})`)
+        const embed = createBaseEmbed(
+          `${NF.gitTag} Latest Release: ${latest.name} (${latest.tagName})`,
+        )
           .setURL(latest.htmlUrl)
           .setDescription(
             `Published: <t:${Math.floor(new Date(latest.publishedAt).getTime() / 1000)}:R>\n\n` +
@@ -84,7 +87,9 @@ export const releaseCommand: Command = {
               `• [\`${c.sha}\`](${c.htmlUrl}) ${c.message.split("\n")[0]} — *${c.author.name}*`,
           );
 
-        const embed = createBaseEmbed(`🏷️ Compare: ${base}...${head} (${repoInput})`).setDescription(
+        const embed = createBaseEmbed(
+          `${NF.gitTag} Compare: ${base}...${head} (${repoInput})`,
+        ).setDescription(
           `**Summary:** \`${diff.totalCommits}\` commits (${diff.aheadBy} ahead, ${diff.behindBy} behind)\n\n${commitLines.join("\n") || "No differences found between tags."}`,
         );
         await interaction.editReply({ embeds: [embed] });

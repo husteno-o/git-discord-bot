@@ -2,6 +2,7 @@ import { githubClient } from "@devpulse/github";
 import { SlashCommandBuilder } from "discord.js";
 import { BrandColors } from "../ui/colors.js";
 import { createBaseEmbed, createErrorEmbed } from "../ui/embeds.js";
+import { NF } from "../ui/icons.js";
 import type { Command } from "./types.js";
 
 export const trendingCommand: Command = {
@@ -47,14 +48,14 @@ export const trendingCommand: Command = {
         const starDelta = Math.max(120, Math.round(r.stars * 0.05));
         return (
           `**${i + 1}. [${r.fullName}](${r.htmlUrl})**\n` +
-          `⭐ \`${r.stars.toLocaleString()}\` *(+${starDelta.toLocaleString()} this ${since === "daily" ? "day" : since === "weekly" ? "week" : "month"})* • \`${r.language || "Multi"}\`\n` +
+          `${NF.star} \`${r.stars.toLocaleString()}\` *(+${starDelta.toLocaleString()} this ${since === "daily" ? "day" : since === "weekly" ? "week" : "month"})* • \`${r.language || "Multi"}\`\n` +
           `*${r.description ? `${r.description.slice(0, 75)}...` : "No description provided"}*\n`
         );
       });
 
       const title = language
-        ? `🔥 Trending ${language.toUpperCase()} Repositories (${since})`
-        : `🔥 Trending Repositories This ${since === "daily" ? "Day" : since === "weekly" ? "Week" : "Month"}`;
+        ? `${NF.flame} Trending ${language.toUpperCase()} Repositories (${since})`
+        : `${NF.flame} Trending Repositories This ${since === "daily" ? "Day" : since === "weekly" ? "Week" : "Month"}`;
 
       const embed = createBaseEmbed(title)
         .setColor(BrandColors.warning)

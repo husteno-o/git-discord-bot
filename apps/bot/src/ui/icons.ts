@@ -35,4 +35,6 @@ export const NF = {
   robot: "◈",
   sparkle: "✦",
   chat: "▸",
+  issue: "☉",
+  bug: "▪",
 } as const;

@@ -116,7 +116,7 @@ async function handleButtonClick(interaction: ButtonInteraction): Promise<void> 
           if (isAuthor || hasPerm) {
             await msg.delete();
             await interaction.reply({
-              content: "✅ Leaked message successfully deleted.",
+              content: `${NF.check} Leaked message successfully deleted.`,
               ephemeral: true,
             });
             return;

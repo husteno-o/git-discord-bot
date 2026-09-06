@@ -3,6 +3,7 @@ import { SlashCommandBuilder } from "discord.js";
 import { BrandColors } from "../ui/colors.js";
 import { createPrActionButtons } from "../ui/components.js";
 import { createBaseEmbed, createDetailedPrEmbed, createErrorEmbed } from "../ui/embeds.js";
+import { NF } from "../ui/icons.js";
 import type { Command } from "./types.js";
 
 export const prCommand: Command = {
@@ -127,9 +128,9 @@ export const prCommand: Command = {
             `• [#${p.number}](${p.htmlUrl}) **${p.title}** (${p.state}) — *by @${p.author.login}*`,
         );
 
-        const embed = createBaseEmbed(`🔀 Pull Requests: ${owner}/${repo}`).setDescription(
-          items.length > 0 ? items.join("\n") : "No pull requests found.",
-        );
+        const embed = createBaseEmbed(
+          `${NF.gitPullRequest} Pull Requests: ${owner}/${repo}`,
+        ).setDescription(items.length > 0 ? items.join("\n") : "No pull requests found.");
         await interaction.editReply({ embeds: [embed] });
         return;
       }
@@ -140,7 +141,7 @@ export const prCommand: Command = {
         const comment = interaction.options.getString("comment") || undefined;
 
         await githubClient.createReview(repoInput, prNumber, action, comment);
-        const embed = createBaseEmbed("✅ Review Submitted")
+        const embed = createBaseEmbed(`${NF.check} Review Submitted`)
           .setColor(BrandColors.success)
           .setDescription(
             `Successfully submitted **${action}** on [PR #${prNumber}](https://github.com/${owner}/${repo}/pull/${prNumber}).`,
@@ -154,7 +155,7 @@ export const prCommand: Command = {
         const method = (interaction.options.getString("method") as any) || "merge";
 
         const res = await githubClient.mergePullRequest(repoInput, prNumber, method);
-        const embed = createBaseEmbed("🔀 Pull Request Merged")
+        const embed = createBaseEmbed(`${NF.gitMerge} Pull Request Merged`)
           .setColor(BrandColors.success)
           .setDescription(
             `PR #${prNumber} successfully merged into base branch using **${method}** strategy.\n${res.message || ""}`,

@@ -1,6 +1,7 @@
 import { githubClient } from "@devpulse/github";
 import { SlashCommandBuilder } from "discord.js";
 import { createBaseEmbed, createErrorEmbed } from "../ui/embeds.js";
+import { NF } from "../ui/icons.js";
 import type { Command } from "./types.js";
 
 export const searchCommand: Command = {
@@ -89,7 +90,7 @@ export const searchCommand: Command = {
         const lines = results.map(
           (r) => `• [**${r.repository.fullName}**](${r.htmlUrl}) — \`${r.path}\``,
         );
-        const embed = createBaseEmbed(`🔎 Code Search: "${query}"`).setDescription(
+        const embed = createBaseEmbed(`${NF.search} Code Search: "${query}"`).setDescription(
           lines.length > 0 ? lines.join("\n") : "No matching code files found.",
         );
         await interaction.editReply({ embeds: [embed] });
@@ -101,7 +102,7 @@ export const searchCommand: Command = {
         const lines = results.map(
           (i) => `• [#${i.number}](${i.htmlUrl}) **${i.title}** (${i.state}) — *by @${i.author}*`,
         );
-        const embed = createBaseEmbed(`🔎 Issue Search: "${query}"`).setDescription(
+        const embed = createBaseEmbed(`${NF.search} Issue Search: "${query}"`).setDescription(
           lines.length > 0 ? lines.join("\n") : "No matching issues found.",
         );
         await interaction.editReply({ embeds: [embed] });
@@ -113,9 +114,9 @@ export const searchCommand: Command = {
         const lines = results.map(
           (p) => `• [#${p.number}](${p.htmlUrl}) **${p.title}** (${p.state}) — *by @${p.author}*`,
         );
-        const embed = createBaseEmbed(`🔎 Pull Request Search: "${query}"`).setDescription(
-          lines.length > 0 ? lines.join("\n") : "No matching pull requests found.",
-        );
+        const embed = createBaseEmbed(
+          `${NF.search} Pull Request Search: "${query}"`,
+        ).setDescription(lines.length > 0 ? lines.join("\n") : "No matching pull requests found.");
         await interaction.editReply({ embeds: [embed] });
         return;
       }
@@ -124,9 +125,9 @@ export const searchCommand: Command = {
         const repos = await githubClient.searchRepositories(query);
         const lines = repos.map(
           (r) =>
-            `• [**${r.fullName}**](${r.htmlUrl}) ⭐ \`${r.stars.toLocaleString()}\` — ${r.description ? `${r.description.slice(0, 60)}...` : "No description"}`,
+            `• [**${r.fullName}**](${r.htmlUrl}) ${NF.star} \`${r.stars.toLocaleString()}\` — ${r.description ? `${r.description.slice(0, 60)}...` : "No description"}`,
         );
-        const embed = createBaseEmbed(`🔎 Repository Search: "${query}"`).setDescription(
+        const embed = createBaseEmbed(`${NF.search} Repository Search: "${query}"`).setDescription(
           lines.length > 0 ? lines.join("\n") : "No matching repositories found.",
         );
         await interaction.editReply({ embeds: [embed] });
@@ -139,7 +140,7 @@ export const searchCommand: Command = {
           (c) =>
             `• [\`${c.sha.slice(0, 7)}\`](${c.htmlUrl}) ${c.message.split("\n")[0]} — *${c.author.name}*`,
         );
-        const embed = createBaseEmbed(`🔎 Commit Search: "${query}"`).setDescription(
+        const embed = createBaseEmbed(`${NF.search} Commit Search: "${query}"`).setDescription(
           lines.length > 0 ? lines.join("\n") : "No matching commits found.",
         );
         await interaction.editReply({ embeds: [embed] });

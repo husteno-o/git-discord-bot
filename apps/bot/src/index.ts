@@ -86,13 +86,13 @@ export async function startUnifiedApp() {
   if (isDefaultOrPlaceholderToken) {
     if (config.ENABLE_HTTP_API) {
       logger.warn(
-        `⚠️  DevPulse HTTP API is running on port ${config.PORT}, but DISCORD_TOKEN in .env is not configured.`,
+        `[!] GITBOT HTTP API is running on port ${config.PORT}, but DISCORD_TOKEN in .env is not configured.`,
       );
     } else {
-      logger.warn("⚠️  DevPulse is ready, but DISCORD_TOKEN in .env is not configured.");
+      logger.warn("[!] GITBOT is ready, but DISCORD_TOKEN in .env is not configured.");
     }
     logger.warn(
-      "👉 Please edit /home/swadhin/discordbot/.env and set your DISCORD_TOKEN and DISCORD_CLIENT_ID to connect to Discord.",
+      "[!] Please edit /home/swadhin/discordbot/.env and set your DISCORD_TOKEN and DISCORD_CLIENT_ID to connect to Discord.",
     );
   } else {
     try {

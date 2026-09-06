@@ -2,6 +2,7 @@ import { githubClient } from "@devpulse/github";
 import { SlashCommandBuilder } from "discord.js";
 import { BrandColors } from "../ui/colors.js";
 import { createBaseEmbed, createErrorEmbed } from "../ui/embeds.js";
+import { NF } from "../ui/icons.js";
 import type { Command } from "./types.js";
 
 export const whyCommand: Command = {
@@ -33,7 +34,7 @@ export const whyCommand: Command = {
       const blames = await githubClient.getBlame(repoInput, path, line);
       const target = blames[0];
 
-      const embed = createBaseEmbed(`🔍 Why Did This Change: ${path} (Line ${line})`)
+      const embed = createBaseEmbed(`${NF.search} Why Did This Change: ${path} (Line ${line})`)
         .setColor(BrandColors.primary)
         .setDescription(
           `**Code at Line ${line}:**\n\`\`\`text\n${target.code}\n\`\`\`\n**Traceability Path:**\n1. **File:** \`${path}\`\n2. **Commit:** [\`${target.commitSha}\`](https://github.com/${repoInput}/commit/${target.commitSha}) by @${target.commitAuthor}\n3. **Commit Reason:** "${target.commitMessage}"\n4. **Associated Pull Request:** ${target.relatedPrNumber ? `[PR #${target.relatedPrNumber}](https://github.com/${repoInput}/pull/${target.relatedPrNumber})` : "Direct commit or PR link inferred from merge history"}\n\n*Historical context: This modification was introduced to resolve session/auth boundary issues and prevent race conditions.*`,

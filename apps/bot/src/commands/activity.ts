@@ -4,6 +4,7 @@ import { SlashCommandBuilder } from "discord.js";
 import { eq } from "drizzle-orm";
 import { BrandColors } from "../ui/colors.js";
 import { createBaseEmbed, createErrorEmbed } from "../ui/embeds.js";
+import { NF } from "../ui/icons.js";
 import type { Command } from "./types.js";
 
 export const activityCommand: Command = {
@@ -53,7 +54,7 @@ export const activityCommand: Command = {
           })
           .join("\n");
 
-        const embed = createBaseEmbed(`📈 Developer Activity: @${data.user.login}`)
+        const embed = createBaseEmbed(`${NF.speedometer} Developer Activity: @${data.user.login}`)
           .setThumbnail(data.user.avatarUrl)
           .setURL(data.user.htmlUrl)
           .setDescription(
@@ -69,7 +70,9 @@ export const activityCommand: Command = {
         const commits = await githubClient.getCommits(repoInput, 50).catch(() => []);
         const prs = await githubClient.getPullRequests(repoInput, "all", 30).catch(() => []);
 
-        const embed = createBaseEmbed(`📈 Repository Velocity: ${repoInput}`).setDescription(
+        const embed = createBaseEmbed(
+          `${NF.speedometer} Repository Velocity: ${repoInput}`,
+        ).setDescription(
           `**RECENT COMMIT CADENCE**\n• Recent commits logged: **${commits.length}**\n• Pull Requests active/merged: **${prs.length}**\n• Author velocity: **${new Set(commits.map((c) => c.author.name)).size} active committers**`,
         );
         await interaction.editReply({ embeds: [embed] });
@@ -82,7 +85,7 @@ export const activityCommand: Command = {
         });
 
         if (!dbUser?.githubUsername) {
-          const embed = createBaseEmbed("🔐 GitHub Account Not Linked")
+          const embed = createBaseEmbed(`${NF.shield} GitHub Account Not Linked`)
             .setColor(BrandColors.warning)
             .setDescription(
               "Your Discord account is not yet connected to a GitHub username.\n\nUse `/connect github` or `/dev link-github` to link your profile!",
@@ -92,7 +95,7 @@ export const activityCommand: Command = {
         }
 
         const data = await githubClient.getDeveloperActivity(dbUser.githubUsername);
-        const embed = createBaseEmbed(`📈 Personal Activity: @${data.user.login}`)
+        const embed = createBaseEmbed(`${NF.speedometer} Personal Activity: @${data.user.login}`)
           .setThumbnail(data.user.avatarUrl)
           .setDescription(
             `**Past 30 Days:**\n• Commits: **${data.commitsCount}**\n• PRs Opened / Merged: **${data.prsOpened}** / **${data.prsMerged}**\n• Code Reviews: **${data.reviewsCount}**\n• Issues Resolved: **${data.issuesResolved}**`,

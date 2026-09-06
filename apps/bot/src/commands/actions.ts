@@ -2,6 +2,7 @@ import { githubClient } from "@devpulse/github";
 import { SlashCommandBuilder } from "discord.js";
 import { BrandColors } from "../ui/colors.js";
 import { createActionsTreeEmbed, createBaseEmbed, createErrorEmbed } from "../ui/embeds.js";
+import { NF } from "../ui/icons.js";
 import type { Command } from "./types.js";
 
 export const actionsCommand: Command = {
@@ -70,9 +71,9 @@ export const actionsCommand: Command = {
           return `• [\`#${r.runNumber}\`](${r.htmlUrl}) **${r.name}** — ${status} \`${r.conclusion || r.status}\` on \`${r.headBranch}\` (\`${r.headSha}\`)`;
         });
 
-        const embed = createBaseEmbed(`⚙️ Recent Workflow Runs: ${repoInput}`).setDescription(
-          lines.length > 0 ? lines.join("\n") : "No recent workflow runs found.",
-        );
+        const embed = createBaseEmbed(
+          `${NF.robot} Recent Workflow Runs: ${repoInput}`,
+        ).setDescription(lines.length > 0 ? lines.join("\n") : "No recent workflow runs found.");
         await interaction.editReply({ embeds: [embed] });
         return;
       }
@@ -80,7 +81,7 @@ export const actionsCommand: Command = {
       if (subcommand === "rerun") {
         const runId = interaction.options.getInteger("run_id", true);
         await githubClient.rerunWorkflow(repoInput, runId);
-        const embed = createBaseEmbed("🔄 Workflow Rerun Triggered")
+        const embed = createBaseEmbed(`${NF.spinner} Workflow Rerun Triggered`)
           .setColor(BrandColors.success)
           .setDescription(
             `Successfully triggered rerun for workflow run \`#${runId}\` in \`${repoInput}\`.`,
@@ -92,7 +93,7 @@ export const actionsCommand: Command = {
       if (subcommand === "cancel") {
         const runId = interaction.options.getInteger("run_id", true);
         await githubClient.cancelWorkflow(repoInput, runId);
-        const embed = createBaseEmbed("⏹️ Workflow Run Cancelled")
+        const embed = createBaseEmbed(`${NF.cross} Workflow Run Cancelled`)
           .setColor(BrandColors.warning)
           .setDescription(
             `Workflow run \`#${runId}\` in \`${repoInput}\` has been requested to cancel.`,

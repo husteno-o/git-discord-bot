@@ -20,18 +20,24 @@ import type { DetectedSecret } from "@devpulse/security";
 import { EmbedBuilder } from "discord.js";
 import { BrandColors } from "./colors.js";
 import { NF } from "./icons.js";
-
-function renderMeter(pct: number, length = 10): string {
-  const filled = Math.min(length, Math.max(0, Math.round((pct / 100) * length)));
-  return "▰".repeat(filled) + "▱".repeat(length - filled);
-}
+import {
+  padText,
+  renderMeter,
+  renderTuiCard,
+  tuiBottomBar,
+  tuiDivider,
+  tuiLine,
+  tuiPrompt,
+  tuiRow2,
+  tuiTopBar,
+} from "./tui.js";
 
 export function createBaseEmbed(title: string, description?: string): EmbedBuilder {
   const embed = new EmbedBuilder()
     .setColor(BrandColors.primary)
     .setTitle(title)
     .setFooter({
-      text: "GITBOT • Developer Operating System",
+      text: "GITBOT TUI • Developer Operating System",
       iconURL: "https://github.githubassets.com/favicons/favicon.png",
     })
     .setTimestamp();
@@ -44,10 +50,21 @@ export function createBaseEmbed(title: string, description?: string): EmbedBuild
 
 export function createErrorEmbed(error: Error | string): EmbedBuilder {
   const message = typeof error === "string" ? error : error.message;
+  const tui = renderTuiCard([
+    tuiTopBar("GITBOT ERROR"),
+    tuiPrompt("gitbot --last-error"),
+    tuiDivider("DIAGNOSTIC TRACE"),
+    tuiLine(`Status : ${NF.cross} Execution Failed`),
+    tuiLine(`Error  : ${message}`),
+    tuiDivider("RECOVERY"),
+    tuiLine("Check parameters or repo access."),
+    tuiBottomBar(),
+  ]);
+
   return new EmbedBuilder()
     .setColor(BrandColors.danger)
-    .setTitle(`${NF.cross} Error`)
-    .setDescription(message)
+    .setTitle(`${NF.cross} Execution Error`)
+    .setDescription(tui)
     .setFooter({ text: "GITBOT Error Console" })
     .setTimestamp();
 }
@@ -58,109 +75,165 @@ export function createRepoDashboardEmbed(
   metrics: RepoDashboardMetrics,
   _activeTab = "overview",
 ): EmbedBuilder {
-  const embed = new EmbedBuilder()
+  const descQuote = repo.description ? `> ${repo.description.replace(/\n/g, " ")}\n\n` : "";
+  const healthScore = Math.round(
+    Math.min(
+      100,
+      Math.max(
+        60,
+        metrics.codingMetrics.issueResolutionRatePercent * 0.4 +
+          Math.min(metrics.activity.commitsCount * 1.5, 40) +
+          (metrics.activity.prsMerged > 0 ? 20 : 10),
+      ),
+    ),
+  );
+  const tui = renderTuiCard([
+    tuiTopBar("GITBOT TUI v2.4.0"),
+    tuiPrompt(`gitbot repo ${repo.fullName}`),
+    tuiDivider("METADATA"),
+    tuiLine(`Target  : ${repo.fullName}`),
+    tuiLine(
+      `Stack   : ${repo.language || "Plain Text"} • ${repo.isPrivate ? "Private" : "Public"}`,
+    ),
+    tuiLine(`Branch  : ${repo.defaultBranch} • ${repo.license?.spdxId || "No License"}`),
+    tuiDivider("TELEMETRY"),
+    tuiRow2(
+      "Stars",
+      `★ ${repo.stars.toLocaleString()}`,
+      "Forks",
+      `⑂ ${repo.forks.toLocaleString()}`,
+    ),
+    tuiRow2(
+      "Issues",
+      `☉ ${repo.openIssuesCount.toLocaleString()} Open`,
+      "PRs",
+      `⎇ ${metrics.activity.prsMerged} Merged`,
+    ),
+    tuiDivider("14-DAY ACTIVITY"),
+    tuiRow2(
+      "Commits",
+      `${metrics.activity.commitsCount} pushed`,
+      "PR Cycle",
+      formatDuration(metrics.cycleTime.avgPrCycleTimeMs),
+    ),
+    tuiRow2(
+      "Through",
+      `${metrics.codingMetrics.prThroughputPerWeek.toFixed(1)} pr/wk`,
+      "Resolved",
+      `${metrics.codingMetrics.issueResolutionRatePercent.toFixed(0)}%`,
+    ),
+    tuiDivider("HEALTH INDEX"),
+    tuiLine(`Health  : ${renderMeter(healthScore)} ${healthScore}/100`),
+    tuiBottomBar(),
+  ]);
+
+  return new EmbedBuilder()
     .setColor(BrandColors.github)
     .setTitle(`${NF.github} ${repo.fullName}`)
+    .setAuthor({
+      name: `GITBOT TUI • ${repo.fullName}`,
+      iconURL: repo.owner.avatarUrl,
+      url: repo.htmlUrl,
+    })
     .setURL(repo.htmlUrl)
-    .setDescription(repo.description || "No description provided.")
-    .setThumbnail(repo.owner.avatarUrl);
-
-  const telemetryBox = [
-    "```text",
-    "┌─ TELEMETRY ─────────────────────────────────────────",
-    `│ Language : ${(repo.language || "Plain Text").padEnd(16)} Visibility : ${repo.isPrivate ? "Private" : "Public"}`,
-    `│ Stars    : ${NF.star} ${repo.stars.toLocaleString().padEnd(13)} Forks      : ${NF.gitFork} ${repo.forks.toLocaleString()}`,
-    `│ License  : ${(repo.license?.spdxId || "None").padEnd(16)} Branch     : ${NF.gitBranch} ${repo.defaultBranch}`,
-    `│ Issues   :  ${repo.openIssuesCount.toLocaleString().padEnd(14)} PRs        : ${NF.gitPullRequest} ${metrics.activity.prsMerged} Merged`,
-    "└─────────────────────────────────────────────────────",
-    "```",
-  ].join("\n");
-
-  embed.addFields({
-    name: `${NF.terminal} Repository Overview`,
-    value: telemetryBox,
-    inline: false,
-  });
-
-  const activityBox = [
-    "```text",
-    `• Commits (14d)  : ${metrics.activity.commitsCount}`,
-    `• PRs Throughput : ${metrics.activity.prsOpened} opened / ${metrics.activity.prsMerged} merged`,
-    `• Issues Closed  : ${metrics.activity.issuesClosed} of ${metrics.activity.issuesOpened}`,
-    `• Releases Count : ${metrics.activity.releasesCount}`,
-    "```",
-  ].join("\n");
-
-  embed.addFields({
-    name: `${NF.speedometer} 14-Day Activity`,
-    value: activityBox,
-    inline: true,
-  });
-
-  const cycleBox = [
-    "```text",
-    `• Avg PR Cycle   : ${formatDuration(metrics.cycleTime.avgPrCycleTimeMs)}`,
-    `• Time to Merge  : ${formatDuration(metrics.cycleTime.avgTimeToMergeMs)}`,
-    `• PR Velocity    : ${metrics.codingMetrics.prThroughputPerWeek.toFixed(1)}/week`,
-    `• Resolution     : ${metrics.codingMetrics.issueResolutionRatePercent.toFixed(0)}%`,
-    "```",
-  ].join("\n");
-
-  embed.addFields({
-    name: `${NF.clock} Cycle Time & Health`,
-    value: cycleBox,
-    inline: true,
-  });
-
-  return embed;
+    .setDescription(descQuote + tui)
+    .setFooter({
+      text: "GITBOT TUI • Use buttons below to switch tabs",
+      iconURL: "https://github.githubassets.com/favicons/favicon.png",
+    })
+    .setTimestamp();
 }
 
 export function createRepoHealthEmbed(repo: GitHubRepo, health: RepoHealthScore): EmbedBuilder {
-  const chart = [
-    `Activity       [${renderMeter(health.activityScore)}]  ${health.activityScore}/100`,
-    `Maintenance    [${renderMeter(health.maintenanceScore)}]  ${health.maintenanceScore}/100`,
-    `CI Reliability [${renderMeter(health.ciScore)}]  ${health.ciScore}/100`,
-    `Community      [${renderMeter(health.communityScore)}]  ${health.communityScore}/100`,
-    `Releases       [${renderMeter(health.releasesScore)}]  ${health.releasesScore}/100`,
-  ].join("\n");
+  const tui = renderTuiCard([
+    tuiTopBar(`HEALTH SCORE: ${health.overallScore}/100`),
+    tuiPrompt(`gitbot repo ${repo.fullName} --health`),
+    tuiDivider("METRIC GAUGES"),
+    tuiLine(`Activity    ${renderMeter(health.activityScore)} ${health.activityScore}/100`),
+    tuiLine(`Maintenance ${renderMeter(health.maintenanceScore)} ${health.maintenanceScore}/100`),
+    tuiLine(`CI / CD     ${renderMeter(health.ciScore)} ${health.ciScore}/100`),
+    tuiLine(`Community   ${renderMeter(health.communityScore)} ${health.communityScore}/100`),
+    tuiLine(`Releases    ${renderMeter(health.releasesScore)} ${health.releasesScore}/100`),
+    tuiDivider("AUDIT METRICS"),
+    tuiRow2(
+      "Commits(30d)",
+      `${health.details.commits30d}`,
+      "Open Ratio",
+      `${health.details.openIssuesRatio}`,
+    ),
+    tuiRow2(
+      "Releases",
+      `${health.details.releasesCount} tags`,
+      "Status",
+      health.overallScore >= 80 ? "HEALTHY" : "NEEDS WORK",
+    ),
+    tuiBottomBar(),
+  ]);
 
-  return createBaseEmbed(`${NF.heart} Repository Health Score: ${health.overallScore}/100`)
+  return createBaseEmbed(`${NF.heart} Health Score: ${repo.fullName}`)
+    .setAuthor({
+      name: `GITBOT TUI • ${repo.fullName}`,
+      iconURL: repo.owner.avatarUrl,
+      url: repo.htmlUrl,
+    })
+    .setURL(repo.htmlUrl)
     .setColor(health.overallScore > 80 ? BrandColors.success : BrandColors.warning)
-    .setThumbnail(repo.owner.avatarUrl)
-    .setDescription(
-      `Health breakdown for [**${repo.fullName}**](${repo.htmlUrl}):\n\`\`\`text\n${chart}\n\`\`\``,
-    )
-    .addFields(
-      { name: "Commits (30d)", value: `\`${health.details.commits30d}\``, inline: true },
-      { name: "Open Issues", value: `\`${health.details.openIssuesRatio}\``, inline: true },
-      { name: "Releases", value: `\`${health.details.releasesCount}\``, inline: true },
-    );
+    .setDescription(tui);
 }
 
 export function createRepoGrowthEmbed(repo: GitHubRepo, growth: RepoGrowthMetrics): EmbedBuilder {
+  const tui = renderTuiCard([
+    tuiTopBar("30-DAY VELOCITY & GROWTH"),
+    tuiPrompt(`gitbot repo ${repo.fullName} --growth`),
+    tuiDivider("TELEMETRY ACCELERATION"),
+    tuiLine(
+      `Stars Total  : ${growth.starsTotal.toLocaleString()} (+${growth.starsDelta30d.toLocaleString()} in 30d)`,
+    ),
+    tuiLine(
+      `Forks Total  : ${growth.forksTotal.toLocaleString()} (+${growth.forksDelta30d.toLocaleString()} in 30d)`,
+    ),
+    tuiLine(`Contributors : ${growth.contributorsTotal} authors`),
+    tuiLine(
+      `PRs Merged   : ${growth.prsMerged30d} (${(growth.prsMerged30d / 4.2).toFixed(1)} / week)`,
+    ),
+    tuiBottomBar(),
+  ]);
+
   return createBaseEmbed(`${NF.speedometer} 30-Day Growth: ${repo.fullName}`)
+    .setAuthor({
+      name: `GITBOT TUI • ${repo.fullName}`,
+      iconURL: repo.owner.avatarUrl,
+      url: repo.htmlUrl,
+    })
     .setColor(BrandColors.primary)
     .setURL(repo.htmlUrl)
-    .setDescription(
-      [
-        "```text",
-        `Stars Total    : ${growth.starsTotal.toLocaleString().padEnd(10)} (+${growth.starsDelta30d.toLocaleString()} in 30d)`,
-        `Forks Total    : ${growth.forksTotal.toLocaleString().padEnd(10)} (+${growth.forksDelta30d.toLocaleString()} in 30d)`,
-        `Contributors   : ${growth.contributorsTotal.toString().padEnd(10)}`,
-        `PRs Merged     : ${growth.prsMerged30d.toString().padEnd(10)} (Velocity: ${(growth.prsMerged30d / 4.2).toFixed(1)}/wk)`,
-        "```",
-      ].join("\n"),
-    );
+    .setDescription(tui);
 }
 
 export function createDependenciesEmbed(repo: GitHubRepo, deps: RepoDependencies): EmbedBuilder {
-  const topDeps = deps.dependencies
-    .slice(0, 15)
-    .map((d) => `• \`${d.name}\`: \`${d.version}\`${d.isDev ? " *(dev)*" : ""}`)
-    .join("\n");
-  return createBaseEmbed(`${NF.network} Dependency Graph: ${repo.fullName}`).setDescription(
-    `Manifest: \`${deps.manifestFile}\` (${deps.ecosystem})\n\n**Total Packages:** \`${deps.totalCount}\` | **Outdated:** \`${deps.outdatedCount}\`\n\n${topDeps || "No dependencies detected."}`,
-  );
+  const topDepsLines = deps.dependencies.slice(0, 8).map((d) => {
+    return tuiLine(`▸ ${padText(d.name, 22)} ${d.version}`);
+  });
+
+  const tui = renderTuiCard([
+    tuiTopBar("DEPENDENCY MANIFEST"),
+    tuiPrompt(`gitbot repo ${repo.fullName} --deps`),
+    tuiDivider("ECOSYSTEM & PACKAGES"),
+    tuiLine(`Manifest : ${deps.manifestFile} (${deps.ecosystem})`),
+    tuiRow2("Total", `${deps.totalCount}`, "Outdated", `${deps.outdatedCount}`),
+    tuiDivider("TOP PACKAGES"),
+    ...(topDepsLines.length > 0 ? topDepsLines : [tuiLine("No dependencies detected.")]),
+    tuiBottomBar(),
+  ]);
+
+  return createBaseEmbed(`${NF.network} Dependencies: ${repo.fullName}`)
+    .setAuthor({
+      name: `GITBOT TUI • ${repo.fullName}`,
+      iconURL: repo.owner.avatarUrl,
+      url: repo.htmlUrl,
+    })
+    .setURL(repo.htmlUrl)
+    .setDescription(tui);
 }
 
 // 2. PR POWER TOOLS
@@ -171,28 +244,40 @@ export function createDetailedPrEmbed(
   const isReady =
     pr.mergeable && pr.reviews.some((r) => r.state === "APPROVED") && pr.ciStatus !== "failure";
   const statusBadge = pr.draft
-    ? `${NF.clock} Draft`
+    ? "Draft"
     : !pr.mergeable
-      ? `${NF.cross} Merge Conflicts`
+      ? "Conflicts"
       : isReady
-        ? `${NF.check} Ready to merge`
-        : `${NF.clock} In Review`;
+        ? "Ready to merge"
+        : "In Review";
 
   const approvedCount = pr.reviews.filter((r) => r.state === "APPROVED").length;
   const ciStatusText =
     pr.ciStatus === "success"
-      ? `${NF.check} Passing`
+      ? "[✓] Passing"
       : pr.ciStatus === "failure"
-        ? `${NF.cross} Failed`
-        : `${NF.spinner} Running`;
-  const conflictText = pr.mergeable === false ? `${NF.cross} Conflicts` : `${NF.check} None`;
+        ? "[✕] Failed"
+        : "[⠋] Running";
+  const conflictText = pr.mergeable === false ? "[✕] Conflicts" : "[✓] Clean";
+
+  const tui = renderTuiCard([
+    tuiTopBar(`PR #${pr.number} INSPECTION`),
+    tuiPrompt(`gh pr view ${pr.number}`),
+    tuiDivider("BRANCH & STATUS"),
+    tuiLine(`Title    : ${pr.title}`),
+    tuiLine(`Branch   : ${pr.headBranch} -> ${pr.baseBranch}`),
+    tuiRow2("Author", `@${pr.author.login}`, "Status", statusBadge),
+    tuiDivider("DIFF & CHECKS"),
+    tuiLine(`Changes  : +${pr.additions} -${pr.deletions} (${pr.changedFiles} files)`),
+    tuiRow2("CI Check", ciStatusText, "Conflicts", conflictText),
+    tuiRow2("Reviews", `${approvedCount} approved`, "Cycle Time", formatDuration(pr.cycleTimeMs)),
+    tuiBottomBar(),
+  ]);
 
   const embed = createBaseEmbed(`${NF.gitPullRequest} PR #${pr.number}: ${pr.title}`)
     .setURL(pr.htmlUrl)
     .setColor(isReady ? BrandColors.success : BrandColors.warning)
-    .setDescription(
-      `**Status:** \`${statusBadge}\`\n**Branch:** \`${pr.headBranch}\` ${NF.arrowRight} \`${pr.baseBranch}\` | **Author:** @${pr.author.login}\n\n\`\`\`text\nDiff      : +${pr.additions} −${pr.deletions} (${pr.changedFiles} files changed)\nCI Status : ${ciStatusText}\nReviews   : ${approvedCount}/${Math.max(approvedCount, 2)} approved\nConflicts : ${conflictText}\nCycle Time: ${formatDuration(pr.cycleTimeMs)}\n\`\`\``,
-    );
+    .setDescription(tui);
 
   const warnings: string[] = [];
   if (pr.changedFiles > 15 || pr.additions + pr.deletions > 500) {
@@ -273,7 +358,7 @@ export function createActionsTreeEmbed(repo: string, runs: any[]): EmbedBuilder 
     const prefix = isLast ? "└──" : "├──";
     const statusIcon =
       r.conclusion === "success" ? NF.check : r.conclusion === "failure" ? NF.cross : NF.spinner;
-    return `${prefix} ${r.name.padEnd(16)} ${statusIcon} (${r.headBranch})`;
+    return `${prefix} ${padText(r.name, 16)} ${statusIcon} (${r.headBranch})`;
   });
 
   return createBaseEmbed(`${NF.robot} GitHub Actions: ${repo}`).setDescription(
@@ -333,7 +418,7 @@ export function createReleaseNotesEmbed(repo: string, notes: any): EmbedBuilder 
 
   if (notes.fixes && notes.fixes.length > 0) {
     embed.addFields({
-      name: " Bug Fixes",
+      name: `${NF.bug} Bug Fixes`,
       value: notes.fixes.map((f: string) => `• ${f}`).join("\n"),
       inline: false,
     });
@@ -358,10 +443,19 @@ export function createHomeDashboardEmbed(
   latestReleases: string[],
   trendingRepos: string[],
 ): EmbedBuilder {
-  return createBaseEmbed(`${NF.github} GITBOT Developer Center — Welcome back, @${username}`)
+  const tui = renderTuiCard([
+    tuiTopBar("DEVELOPER CENTER"),
+    tuiPrompt(`gitbot whoami --stats`),
+    tuiDivider(`USER: @${username.toUpperCase()}`),
+    tuiRow2("Commits", `${userStats.commits}`, "PRs", `${userStats.prs}`),
+    tuiRow2("Reviews", `${userStats.reviews}`, "Issues", `${userStats.issues}`),
+    tuiBottomBar(),
+  ]);
+
+  return createBaseEmbed(`${NF.github} GITBOT Developer Center — @${username}`)
     .setColor(BrandColors.primary)
     .setDescription(
-      `**YOUR RECENT ACTIVITY**\n\`${userStats.commits}\` Commits • \`${userStats.prs}\` PRs • \`${userStats.reviews}\` Reviews • \`${userStats.issues}\` Issues\n\n**${NF.warning} NEEDS ATTENTION**\n${attentionItems.join("\n") || `${NF.check} No urgent bottlenecks or failing builds!`}\n\n**${NF.gitTag} RELEASES**\n${latestReleases.join("\n") || "No new releases in followed repositories."}\n\n**${NF.flame} TRENDING ON GITHUB**\n${trendingRepos.join("\n") || "Check /trending for top rising projects."}`,
+      `${tui}\n\n**${NF.warning} NEEDS ATTENTION**\n${attentionItems.join("\n") || `${NF.check} No urgent bottlenecks or failing builds!`}\n\n**${NF.gitTag} RELEASES**\n${latestReleases.join("\n") || "No new releases in followed repositories."}\n\n**${NF.flame} TRENDING ON GITHUB**\n${trendingRepos.join("\n") || "Check /trending for top rising projects."}`,
     );
 }
 
@@ -371,11 +465,24 @@ export function createConnectStatusEmbed(
   status: "connected" | "disconnected",
   scopes: string[],
 ): EmbedBuilder {
-  return createBaseEmbed(`${NF.github} GITBOT Authentication Center`)
-    .setColor(status === "connected" ? BrandColors.success : BrandColors.secondary)
-    .setDescription(
-      `**GitHub Identity:** \`@${account}\`\n**Status:** ${status === "connected" ? `${NF.check} Connected via GitHub App` : `${NF.cross} Disconnected`}\n\n**Granted Capabilities:**\n• Read Public & Selected Repositories: ${NF.check}\n• Read Issues & Pull Requests: ${NF.check}\n• Read Actions & Workflows: ${NF.check}\n• Write Actions (Approve / Merge): ${scopes.includes("write") ? `${NF.check} Enabled` : `${NF.cross} Disabled (Read Mode)`}\n\n*Credentials are secured using AES-256-GCM encryption.*`,
-    );
+  const isConn = status === "connected";
+  const tui = renderTuiCard([
+    tuiTopBar("AUTH SUBSYSTEM"),
+    tuiPrompt("gitbot auth status"),
+    tuiDivider("SESSION METADATA"),
+    tuiLine(`Identity : @${account}`),
+    tuiLine(`Status   : ${isConn ? "[✓] Connected via App" : "[✕] Disconnected"}`),
+    tuiDivider("CAPABILITIES"),
+    tuiLine(`Repos Read/Watch : [✓] Enabled`),
+    tuiLine(`Issues & PRs     : [✓] Enabled`),
+    tuiLine(`Actions CI       : [✓] Enabled`),
+    tuiLine(`Write & Merge    : ${scopes.includes("write") ? "[✓] Enabled" : "[✕] Read Mode"}`),
+    tuiBottomBar(),
+  ]);
+
+  return createBaseEmbed(`${NF.github} Authentication Center`)
+    .setColor(isConn ? BrandColors.success : BrandColors.secondary)
+    .setDescription(`${tui}\n\n*Credentials are encrypted at rest with AES-256-GCM.*`);
 }
 
 // Retain compatibility helpers
@@ -387,47 +494,125 @@ export function createPersonalDashboardEmbed(stats: PersonalStats): EmbedBuilder
 }
 
 export function createRepoCommitsEmbed(repo: GitHubRepo, commits: GitHubCommit[]): EmbedBuilder {
-  const list = commits
-    .slice(0, 10)
+  const commitLines = commits.slice(0, 7).map((c) => {
+    const sha = c.sha.slice(0, 7);
+    const msg = c.message.split("\n")[0];
+    return tuiLine(`▸ ${sha} ${msg}`);
+  });
+
+  const tui = renderTuiCard([
+    tuiTopBar("GIT LOG --ONELINE"),
+    tuiPrompt(`git log -n 7 --oneline`),
+    tuiDivider("RECENT COMMITS"),
+    ...(commitLines.length > 0 ? commitLines : [tuiLine("No commits recorded.")]),
+    tuiBottomBar(),
+  ]);
+
+  const markdownLinks = commits
+    .slice(0, 6)
     .map(
       (c) =>
-        `• [\`${c.sha.slice(0, 7)}\`](${c.htmlUrl}) ${c.message.split("\n")[0]} — *${c.author.name}*`,
+        `• [\`${c.sha.slice(0, 7)}\`](${c.htmlUrl}) ${c.message.split("\n")[0]} — *@${c.author.name}*`,
     )
     .join("\n");
-  return createBaseEmbed(`${NF.gitCommit} Recent Commits: ${repo.fullName}`).setDescription(
-    list || "No commits found.",
-  );
+
+  return createBaseEmbed(`${NF.gitCommit} Commits: ${repo.fullName}`)
+    .setAuthor({
+      name: `GITBOT TUI • ${repo.fullName}`,
+      iconURL: repo.owner.avatarUrl,
+      url: repo.htmlUrl,
+    })
+    .setURL(repo.htmlUrl)
+    .setDescription(`${tui}\n\n**Commit History:**\n${markdownLinks || "None"}`);
 }
 
 export function createRepoPrsEmbed(repo: GitHubRepo, prs: GitHubPullRequest[]): EmbedBuilder {
-  const list = prs
-    .slice(0, 10)
-    .map((p) => `• [#${p.number}](${p.htmlUrl}) **${p.title}** (${p.state})`)
+  const prLines = prs.slice(0, 7).map((p) => {
+    const status = p.state.toUpperCase();
+    return tuiLine(`[#${p.number}] ${padText(p.title, 24)} (${status})`);
+  });
+
+  const tui = renderTuiCard([
+    tuiTopBar("PULL REQUEST QUEUE"),
+    tuiPrompt(`gh pr list --state all --limit 7`),
+    tuiDivider("RECENT PR RECORDS"),
+    ...(prLines.length > 0 ? prLines : [tuiLine("No pull requests found.")]),
+    tuiBottomBar(),
+  ]);
+
+  const markdownLinks = prs
+    .slice(0, 6)
+    .map((p) => `• [#${p.number}](${p.htmlUrl}) **${p.title}** (\`${p.state}\`)`)
     .join("\n");
-  return createBaseEmbed(`${NF.gitPullRequest} Pull Requests: ${repo.fullName}`).setDescription(
-    list || "No pull requests found.",
-  );
+
+  return createBaseEmbed(`${NF.gitPullRequest} Pull Requests: ${repo.fullName}`)
+    .setAuthor({
+      name: `GITBOT TUI • ${repo.fullName}`,
+      iconURL: repo.owner.avatarUrl,
+      url: repo.htmlUrl,
+    })
+    .setURL(repo.htmlUrl)
+    .setDescription(`${tui}\n\n**Quick PR Links:**\n${markdownLinks || "None"}`);
 }
 
 export function createRepoIssuesEmbed(repo: GitHubRepo, issues: GitHubIssue[]): EmbedBuilder {
-  const list = issues
-    .slice(0, 10)
-    .map((i) => `• [#${i.number}](${i.htmlUrl}) **${i.title}** (${i.state})`)
+  const issueLines = issues.slice(0, 7).map((i) => {
+    const status = i.state.toUpperCase();
+    return tuiLine(`[#${i.number}] ${padText(i.title, 24)} (${status})`);
+  });
+
+  const tui = renderTuiCard([
+    tuiTopBar("ISSUE TRACKER"),
+    tuiPrompt(`gh issue list --limit 7`),
+    tuiDivider("ACTIVE ISSUES"),
+    ...(issueLines.length > 0 ? issueLines : [tuiLine("No issues found.")]),
+    tuiBottomBar(),
+  ]);
+
+  const markdownLinks = issues
+    .slice(0, 6)
+    .map((i) => `• [#${i.number}](${i.htmlUrl}) **${i.title}** (\`${i.state}\`)`)
     .join("\n");
-  return createBaseEmbed(` Issues: ${repo.fullName}`).setDescription(list || "No issues found.");
+
+  return createBaseEmbed(`${NF.issue} Issues: ${repo.fullName}`)
+    .setAuthor({
+      name: `GITBOT TUI • ${repo.fullName}`,
+      iconURL: repo.owner.avatarUrl,
+      url: repo.htmlUrl,
+    })
+    .setURL(repo.htmlUrl)
+    .setDescription(`${tui}\n\n**Quick Issue Links:**\n${markdownLinks || "None"}`);
 }
 
 export function createRepoReleasesEmbed(repo: GitHubRepo, releases: GitHubRelease[]): EmbedBuilder {
-  const list = releases
+  const releaseLines = releases.slice(0, 5).map((r) => {
+    return tuiLine(`▸ ${padText(r.tagName, 12)} ${r.name}`);
+  });
+
+  const tui = renderTuiCard([
+    tuiTopBar("RELEASE TAGS"),
+    tuiPrompt(`gh release list --limit 5`),
+    tuiDivider("PUBLISHED RELEASES"),
+    ...(releaseLines.length > 0 ? releaseLines : [tuiLine("No releases found.")]),
+    tuiBottomBar(),
+  ]);
+
+  const markdownLinks = releases
     .slice(0, 5)
     .map(
       (r) =>
         `• [**${r.name}**](${r.htmlUrl}) (\`${r.tagName}\`) — <t:${Math.floor(new Date(r.publishedAt).getTime() / 1000)}:R>`,
     )
     .join("\n");
-  return createBaseEmbed(`${NF.gitTag} Releases: ${repo.fullName}`).setDescription(
-    list || "No releases found.",
-  );
+
+  return createBaseEmbed(`${NF.gitTag} Releases: ${repo.fullName}`)
+    .setAuthor({
+      name: `GITBOT TUI • ${repo.fullName}`,
+      iconURL: repo.owner.avatarUrl,
+      url: repo.htmlUrl,
+    })
+    .setURL(repo.htmlUrl)
+    .setDescription(`${tui}\n\n**Release Details:**\n${markdownLinks || "None"}`);
 }
 
 export function createSecurityAlertEmbed(secret: DetectedSecret): EmbedBuilder {

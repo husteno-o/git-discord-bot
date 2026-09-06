@@ -1,6 +1,7 @@
 import { SlashCommandBuilder } from "discord.js";
 import { BrandColors } from "../ui/colors.js";
 import { createBaseEmbed, createErrorEmbed } from "../ui/embeds.js";
+import { NF } from "../ui/icons.js";
 import type { Command } from "./types.js";
 
 export const toolsCommand: Command = {
@@ -66,9 +67,9 @@ export const toolsCommand: Command = {
         };
 
         const content = templates[template] || "node_modules/\n.env\n*.log";
-        const embed = createBaseEmbed(`📄 .gitignore Template: ${template}`).setDescription(
-          `\`\`\`gitignore\n${content}\n\`\`\``,
-        );
+        const embed = createBaseEmbed(
+          `${NF.document} .gitignore Template: ${template}`,
+        ).setDescription(`\`\`\`gitignore\n${content}\n\`\`\``);
         await interaction.editReply({ embeds: [embed] });
         return;
       }

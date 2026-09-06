@@ -108,12 +108,12 @@ export const settingsCommand: Command = {
             { name: "Timezone", value: `\`${server?.timezone || "UTC"}\``, inline: true },
             {
               name: "Secret Scanning",
-              value: server?.secretScanningEnabled ? "🟢 Enabled" : "🔴 Disabled",
+              value: server?.secretScanningEnabled ? "[✓] Enabled" : "[✕] Disabled",
               inline: true,
             },
             {
               name: "AI Features",
-              value: server?.aiEnabled ? "🟢 Enabled" : "🔴 Disabled",
+              value: server?.aiEnabled ? "[✓] Enabled" : "[✕] Disabled",
               inline: true,
             },
             {

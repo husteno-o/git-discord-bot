@@ -10,9 +10,10 @@ import {
 import { commands } from "../commands/index.js";
 import { BrandColors } from "../ui/colors.js";
 import { createBaseEmbed } from "../ui/embeds.js";
+import { NF } from "../ui/icons.js";
 
 export async function handleReady(client: Client<true>): Promise<void> {
-  logger.info({ user: client.user.tag }, "DevPulse Discord Bot logged in successfully");
+  logger.info({ user: client.user.tag }, "GITBOT logged in successfully");
 
   // 1. Initialize database schema
   await initDatabase();
@@ -21,7 +22,7 @@ export async function handleReady(client: Client<true>): Promise<void> {
   client.user.setPresence({
     activities: [
       {
-        name: "GitHub Command Center | /help",
+        name: "GITBOT Terminal | /help",
         type: ActivityType.Custom,
       },
     ],
@@ -85,7 +86,7 @@ export async function handleReady(client: Client<true>): Promise<void> {
       if (channel && "send" in channel) {
         const isUp = outcome.isHealthy;
         const color = isUp ? BrandColors.success : BrandColors.danger;
-        const title = isUp ? "🟢 Monitor Recovered" : "🔴 Monitor Down Alert";
+        const title = isUp ? `${NF.check} Monitor Recovered` : `${NF.cross} Monitor Down Alert`;
 
         const embed = createBaseEmbed(title)
           .setColor(color)

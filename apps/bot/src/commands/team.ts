@@ -4,6 +4,7 @@ import { SlashCommandBuilder } from "discord.js";
 import { eq } from "drizzle-orm";
 import { BrandColors } from "../ui/colors.js";
 import { createBaseEmbed, createErrorEmbed } from "../ui/embeds.js";
+import { NF } from "../ui/icons.js";
 import type { Command } from "./types.js";
 
 export const teamCommand: Command = {
@@ -42,7 +43,9 @@ export const teamCommand: Command = {
       const prsOpened = prs.length;
       const prsMerged = prs.filter((p) => p.mergedAt).length;
 
-      const embed = createBaseEmbed(`👥 Team Intelligence: ${interaction.guild?.name || "Team"}`)
+      const embed = createBaseEmbed(
+        `${NF.users} Team Intelligence: ${interaction.guild?.name || "Team"}`,
+      )
         .setColor(BrandColors.primary)
         .setDescription(
           `Team health, collaboration metrics, and PR velocity:\n\n\`\`\`text\nActive Members:   ${Math.max(members.length, 6).toString().padEnd(6)}\nPRs Opened:       ${prsOpened.toString().padEnd(6)}\nPRs Merged:       ${prsMerged.toString().padEnd(6)}\nReviews Tracked:  ${Math.max(
