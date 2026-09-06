@@ -1,8 +1,10 @@
 import { cache } from "@devpulse/cache";
+import { config } from "@devpulse/config";
 import { formatBytes } from "@devpulse/core";
-import { db } from "@devpulse/database";
+import { db, users } from "@devpulse/database";
 import { logger } from "@devpulse/logger";
-import { sql } from "drizzle-orm";
+import { encryptSecret } from "@devpulse/security";
+import { eq, sql } from "drizzle-orm";
 import Fastify, { type FastifyInstance } from "fastify";
 
 export interface ServerOptions {
@@ -90,6 +92,143 @@ export function buildServer(options?: ServerOptions): FastifyInstance {
       nodeVersion: process.version,
       platform: process.platform,
     };
+  });
+
+  // --------------------------------------------------------------------------
+  // GitHub OAuth Endpoints
+  // --------------------------------------------------------------------------
+  server.get("/auth/github/login", async (req, reply) => {
+    const { userId } = req.query as { userId?: string };
+    if (!config.GITHUB_CLIENT_ID) {
+      return reply
+        .status(500)
+        .type("text/html")
+        .send("<h1>Error: GITHUB_CLIENT_ID is not configured in .env</h1>");
+    }
+
+    const redirectUri =
+      config.GITHUB_REDIRECT_URI ||
+      `${req.protocol}://${req.headers.host || req.hostname}/auth/github/callback`;
+    const state = userId || "anonymous";
+    const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${encodeURIComponent(
+      config.GITHUB_CLIENT_ID,
+    )}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=repo,read:user&state=${encodeURIComponent(state)}`;
+
+    return reply.redirect(githubAuthUrl);
+  });
+
+  server.get("/auth/github/callback", async (req, reply) => {
+    const { code, state } = req.query as { code?: string; state?: string };
+
+    if (!code) {
+      return reply
+        .status(400)
+        .type("text/html")
+        .send("<h1>Error: Missing authorization code from GitHub</h1>");
+    }
+
+    if (!config.GITHUB_CLIENT_ID || !config.GITHUB_CLIENT_SECRET) {
+      return reply
+        .status(500)
+        .type("text/html")
+        .send("<h1>Error: GitHub OAuth credentials not configured on server</h1>");
+    }
+
+    try {
+      const tokenRes = await fetch("https://github.com/login/oauth/access_token", {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          client_id: config.GITHUB_CLIENT_ID,
+          client_secret: config.GITHUB_CLIENT_SECRET,
+          code,
+        }),
+      });
+
+      const tokenData = (await tokenRes.json()) as {
+        access_token?: string;
+        error?: string;
+        error_description?: string;
+      };
+
+      if (!tokenData.access_token) {
+        return reply
+          .status(400)
+          .type("text/html")
+          .send(
+            `<h1>Authentication Failed</h1><p>${tokenData.error_description || "Could not retrieve access token."}</p>`,
+          );
+      }
+
+      const userRes = await fetch("https://api.github.com/user", {
+        headers: {
+          Authorization: `Bearer ${tokenData.access_token}`,
+          "User-Agent": "DevPulse-Discord-Bot",
+        },
+      });
+
+      const ghUser = (await userRes.json()) as { login: string; id: number };
+      const encrypted = encryptSecret(tokenData.access_token);
+      const discordUserId = state && state !== "anonymous" ? state : null;
+
+      if (discordUserId) {
+        const existing = await db.query.users.findFirst({
+          where: eq(users.id, discordUserId),
+        });
+
+        if (existing) {
+          await db
+            .update(users)
+            .set({
+              githubUsername: ghUser.login,
+              githubTokenEncrypted: encrypted,
+              updatedAt: new Date(),
+            })
+            .where(eq(users.id, discordUserId));
+        } else {
+          await db.insert(users).values({
+            id: discordUserId,
+            username: ghUser.login,
+            githubUsername: ghUser.login,
+            githubTokenEncrypted: encrypted,
+          });
+        }
+      }
+
+      return reply.type("text/html").send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>DevPulse - Connected</title>
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0d1117; color: #f0f6fc; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+            .card { background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 40px; text-align: center; max-width: 440px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
+            h1 { color: #3fb950; font-size: 1.5rem; margin-bottom: 12px; }
+            p { color: #8b949e; line-height: 1.6; margin-bottom: 24px; font-size: 0.95rem; }
+            .badge { display: inline-block; background: rgba(56,139,253,0.15); color: #58a6ff; border: 1px solid rgba(56,139,253,0.4); padding: 4px 12px; border-radius: 6px; font-family: monospace; font-size: 0.9rem; margin-bottom: 20px; }
+            .footer { font-size: 0.8rem; color: #6e7681; }
+          </style>
+        </head>
+        <body>
+          <div class="card">
+            <h1>GitHub Connected</h1>
+            <div class="badge">@${ghUser.login}</div>
+            <p>Your GitHub account has been securely linked and encrypted with AES-256-GCM. You can now close this tab and return to Discord!</p>
+            <div class="footer">DevPulse Developer Operating System</div>
+          </div>
+        </body>
+        </html>
+      `);
+    } catch (err: any) {
+      logger.error({ err }, "GitHub OAuth exchange failed");
+      return reply
+        .status(500)
+        .type("text/html")
+        .send(`<h1>Internal Server Error</h1><p>${err.message}</p>`);
+    }
   });
 
   return server;

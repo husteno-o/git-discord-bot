@@ -24,6 +24,7 @@ export const ConfigSchema = z.object({
   GITHUB_TOKEN: z.string().optional(),
   GITHUB_CLIENT_ID: z.string().optional(),
   GITHUB_CLIENT_SECRET: z.string().optional(),
+  GITHUB_REDIRECT_URI: z.string().optional(),
 
   // Optional AI integration
   AI_PROVIDER: z.enum(["openai", "anthropic", "gemini", "none"]).default("none"),
