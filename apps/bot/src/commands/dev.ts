@@ -1,4 +1,5 @@
 import { analyticsService } from "@devpulse/analytics";
+import { formatBytes } from "@devpulse/core";
 import { db, users } from "@devpulse/database";
 import { githubClient } from "@devpulse/github";
 import { SlashCommandBuilder } from "discord.js";
@@ -16,6 +17,13 @@ export const devCommand: Command = {
         .setName("dashboard")
         .setDescription(
           "View your personal developer productivity dashboard (activity, focus, cycle time)",
+        ),
+    )
+    .addSubcommand((sub) =>
+      sub
+        .setName("system")
+        .setDescription(
+          "View DevPulse bot system health, database status, memory stats, and gateway latency",
         ),
     )
     .addSubcommand((sub) =>
@@ -73,6 +81,82 @@ export const devCommand: Command = {
           .setColor(BrandColors.success)
           .setDescription(
             `Successfully linked your Discord account to GitHub user **[@${ghUser.login}](${ghUser.htmlUrl})**.\n\nYou can now run \`/dev dashboard\` to see your personal productivity telemetry!`,
+          );
+
+        await interaction.editReply({ embeds: [embed] });
+        return;
+      }
+
+      if (subcommand === "system") {
+        const memory = process.memoryUsage();
+        const allServers = await db.query.servers.findMany();
+        const allRepos = await db.query.repositories.findMany();
+        const allMonitors = await db.query.monitors.findMany();
+
+        const uptimeSec = Math.floor(process.uptime());
+        const days = Math.floor(uptimeSec / 86400);
+        const hours = Math.floor((uptimeSec % 86400) / 3600);
+        const minutes = Math.floor((uptimeSec % 3600) / 60);
+        const seconds = uptimeSec % 60;
+        const uptimeParts: string[] = [];
+        if (days > 0) uptimeParts.push(`${days}d`);
+        if (hours > 0) uptimeParts.push(`${hours}h`);
+        if (minutes > 0) uptimeParts.push(`${minutes}m`);
+        uptimeParts.push(`${seconds}s`);
+        const uptimeStr = uptimeParts.join(" ");
+
+        const ping = interaction.client.ws.ping;
+        const pingStatus = ping < 150 ? "🟢" : ping < 300 ? "🟡" : "🔴";
+
+        const embed = createBaseEmbed("⚡ DevPulse Bot System Telemetry")
+          .setColor(BrandColors.primary)
+          .setDescription("Live operational status, database health, and memory metrics:")
+          .addFields(
+            {
+              name: "📶 Gateway Latency",
+              value: `${pingStatus} \`${ping >= 0 ? `${ping}ms` : "Connecting..."}\``,
+              inline: true,
+            },
+            {
+              name: "⏱️ Bot Uptime",
+              value: `\`${uptimeStr}\``,
+              inline: true,
+            },
+            {
+              name: "🗄️ Database (libSQL)",
+              value: "🟢 Connected",
+              inline: true,
+            },
+            {
+              name: "🧠 Memory (RSS)",
+              value: `\`${formatBytes(memory.rss)}\``,
+              inline: true,
+            },
+            {
+              name: "📦 Heap (Used / Total)",
+              value: `\`${formatBytes(memory.heapUsed)} / ${formatBytes(memory.heapTotal)}\``,
+              inline: true,
+            },
+            {
+              name: "⚡ Runtime",
+              value: `\`Bun ${typeof Bun !== "undefined" ? (Bun as any).version : process.version}\``,
+              inline: true,
+            },
+            {
+              name: "🌐 Discord Servers",
+              value: `\`${interaction.client.guilds.cache.size}\` Connected (\`${allServers.length}\` Registered)`,
+              inline: true,
+            },
+            {
+              name: "📡 Tracked Repos",
+              value: `\`${allRepos.length}\` Repositories`,
+              inline: true,
+            },
+            {
+              name: "🚦 Active Monitors",
+              value: `\`${allMonitors.filter((m) => m.isActive).length} / ${allMonitors.length}\` Active`,
+              inline: true,
+            },
           );
 
         await interaction.editReply({ embeds: [embed] });

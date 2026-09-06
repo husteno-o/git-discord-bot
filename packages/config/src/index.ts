@@ -3,6 +3,7 @@ import { z } from "zod";
 export const ConfigSchema = z.object({
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
+  ENABLE_HTTP_API: z.coerce.boolean().default(false),
   PORT: z.coerce.number().int().positive().default(3000),
   HOST: z.string().default("0.0.0.0"),
 

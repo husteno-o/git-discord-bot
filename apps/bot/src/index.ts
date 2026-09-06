@@ -34,17 +34,21 @@ export async function startUnifiedApp() {
   // 2. Initialize Discord Client
   const client = createBotClient();
 
-  // 3. Initialize & start Fastify HTTP API Server (exposes /health, /ready, /metrics)
-  const apiServer = buildServer({ discordClient: client });
-  try {
-    const address = await apiServer.listen({
-      port: config.PORT,
-      host: config.HOST,
-    });
-    logger.info({ address }, `DevPulse HTTP API server listening on ${address}`);
-  } catch (err) {
-    logger.error({ err }, "Failed to bind DevPulse HTTP API server");
-    process.exit(1);
+  // 3. Conditionally initialize Fastify HTTP API Server (pure Discord bot mode by default)
+  let apiServer: any = null;
+  if (config.ENABLE_HTTP_API) {
+    apiServer = buildServer({ discordClient: client });
+    try {
+      const address = await apiServer.listen({
+        port: config.PORT,
+        host: config.HOST,
+      });
+      logger.info({ address }, `DevPulse HTTP API server listening on ${address}`);
+    } catch (err) {
+      logger.error({ err }, "Failed to bind DevPulse HTTP API server");
+    }
+  } else {
+    logger.info("Running in pure Discord bot mode (HTTP API disabled, zero open ports needed)");
   }
 
   // 4. Graceful shutdown handler
@@ -52,10 +56,12 @@ export async function startUnifiedApp() {
   const shutdown = async (signal: string) => {
     if (isShuttingDown) return;
     isShuttingDown = true;
-    logger.info({ signal }, "Gracefully shutting down DevPulse unified platform...");
+    logger.info({ signal }, "Gracefully shutting down DevPulse platform...");
     scheduler.stop();
     try {
-      await apiServer.close();
+      if (apiServer) {
+        await apiServer.close();
+      }
       client.destroy();
       logger.info("DevPulse shutdown completed successfully.");
     } catch (err) {
@@ -75,9 +81,13 @@ export async function startUnifiedApp() {
     config.DISCORD_TOKEN.startsWith("your_discord_bot_token");
 
   if (isDefaultOrPlaceholderToken) {
-    logger.warn(
-      `⚠️  DevPulse HTTP API is running on port ${config.PORT}, but DISCORD_TOKEN in .env is not configured.`,
-    );
+    if (config.ENABLE_HTTP_API) {
+      logger.warn(
+        `⚠️  DevPulse HTTP API is running on port ${config.PORT}, but DISCORD_TOKEN in .env is not configured.`,
+      );
+    } else {
+      logger.warn("⚠️  DevPulse is ready, but DISCORD_TOKEN in .env is not configured.");
+    }
     logger.warn(
       "👉 Please edit /home/swadhin/discordbot/.env and set your DISCORD_TOKEN and DISCORD_CLIENT_ID to connect to Discord.",
     );

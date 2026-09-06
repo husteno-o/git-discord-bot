@@ -41,8 +41,8 @@ export const helpCommand: Command = {
             inline: false,
           },
           {
-            name: "👨‍💻 Developer Telemetry",
-            value: "`/dev dashboard`, `/dev profile`, `/dev link-github`",
+            name: "👨‍💻 Developer Telemetry & System",
+            value: "`/dev dashboard`, `/dev profile`, `/dev link-github`, `/dev system`",
             inline: false,
           },
           {
