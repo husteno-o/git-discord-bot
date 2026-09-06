@@ -189,14 +189,33 @@ export class UpstashRedisProvider implements CacheProvider {
 
 let providerInstance: CacheProvider | null = null;
 
+function isValidUpstashConfig(url?: string, token?: string): boolean {
+  if (!url || !token) return false;
+  if (
+    url.includes("your-upstash-instance") ||
+    url.includes("mock-redis") ||
+    url.includes("example.com")
+  ) {
+    return false;
+  }
+  if (
+    token.includes("your_upstash_rest_token") ||
+    token.includes("mock_token") ||
+    token === "placeholder"
+  ) {
+    return false;
+  }
+  return true;
+}
+
 export function getCacheProvider(): CacheProvider {
   if (providerInstance) return providerInstance;
 
-  if (config.UPSTASH_REDIS_REST_URL && config.UPSTASH_REDIS_REST_TOKEN) {
+  if (isValidUpstashConfig(config.UPSTASH_REDIS_REST_URL, config.UPSTASH_REDIS_REST_TOKEN)) {
     logger.info("Using Upstash Redis cache provider");
     providerInstance = new UpstashRedisProvider(
-      config.UPSTASH_REDIS_REST_URL,
-      config.UPSTASH_REDIS_REST_TOKEN,
+      config.UPSTASH_REDIS_REST_URL!,
+      config.UPSTASH_REDIS_REST_TOKEN!,
     );
   } else {
     logger.info("Using in-memory cache provider (no Upstash Redis configured)");

@@ -1,21 +1,22 @@
-import type { PersonalStats, TeamStats } from "@devpulse/analytics";
-import {
-  formatDuration,
-  renderHorizontalBarChart,
-  renderProgressBar,
-  renderSparkline,
-} from "@devpulse/core";
+import type { PersonalStats } from "@devpulse/analytics";
+import { formatBytes, formatDuration } from "@devpulse/core";
 import type {
+  GitHubBlameLine,
   GitHubCommit,
+  GitHubDetailedPullRequest,
+  GitHubFileContent,
   GitHubIssue,
   GitHubPullRequest,
   GitHubRelease,
   GitHubRepo,
+  GitHubSecurityAdvisory,
+  InvestigationTimeline,
   RepoDashboardMetrics,
+  RepoDependencies,
+  RepoGrowthMetrics,
+  RepoHealthScore,
 } from "@devpulse/github";
-import type { NewsItem } from "@devpulse/news";
-import type { DetectedSecret, VulnerabilityRecord } from "@devpulse/security";
-import type { TrendingRepo, TrendingTech } from "@devpulse/trending";
+import type { DetectedSecret } from "@devpulse/security";
 import { EmbedBuilder } from "discord.js";
 import { BrandColors } from "./colors.js";
 
@@ -24,7 +25,7 @@ export function createBaseEmbed(title: string, description?: string): EmbedBuild
     .setColor(BrandColors.primary)
     .setTitle(title)
     .setFooter({
-      text: "DevPulse • Developer Command Center",
+      text: "DevPulse • GitHub Command Center",
       iconURL: "https://github.githubassets.com/favicons/favicon.png",
     })
     .setTimestamp();
@@ -45,10 +46,11 @@ export function createErrorEmbed(error: Error | string): EmbedBuilder {
     .setTimestamp();
 }
 
+// 1. REPO EMBEDS
 export function createRepoDashboardEmbed(
   repo: GitHubRepo,
   metrics: RepoDashboardMetrics,
-  activeTab = "overview",
+  _activeTab = "overview",
 ): EmbedBuilder {
   const embed = new EmbedBuilder()
     .setColor(BrandColors.github)
@@ -57,422 +59,362 @@ export function createRepoDashboardEmbed(
     .setDescription(repo.description || "No description provided.")
     .setThumbnail(repo.owner.avatarUrl);
 
-  // Tab: Overview & Master Dashboard
-  if (activeTab === "overview") {
-    // 1. Repository Header Stats
-    embed.addFields({
-      name: "📌 Repository Overview",
-      value: [
-        `**Language:** \`${repo.language || "Unknown"}\` | **Stars:** ⭐ \`${repo.stars.toLocaleString()}\` | **Forks:** 🍴 \`${repo.forks.toLocaleString()}\``,
-        `**Open Issues:** 🐛 \`${repo.openIssuesCount.toLocaleString()}\` | **Branch:** \`${repo.defaultBranch}\``,
-        `**License:** \`${repo.license?.spdxId || "None"}\` | **Visibility:** \`${repo.isPrivate ? "Private" : "Public"}\``,
-      ].join("\n"),
-      inline: false,
-    });
+  embed.addFields({
+    name: "📌 Repository Overview",
+    value: [
+      `**Language:** \`${repo.language || "Unknown"}\` | **Stars:** ⭐ \`${repo.stars.toLocaleString()}\` | **Forks:** 🍴 \`${repo.forks.toLocaleString()}\``,
+      `**Open Issues:** ⚠️ \`${repo.openIssuesCount.toLocaleString()}\` | **Branch:** \`${repo.defaultBranch}\``,
+      `**License:** \`${repo.license?.spdxId || "None"}\` | **Visibility:** \`${repo.isPrivate ? "Private" : "Public"}\``,
+    ].join("\n"),
+    inline: false,
+  });
 
-    // 2. Activity Log (Weekly snapshot)
-    embed.addFields({
-      name: "📊 Activity (Past 14 Days)",
-      value: [
-        `• Commits: **${metrics.activity.commitsCount}**`,
-        `• PRs Opened / Merged: **${metrics.activity.prsOpened}** / **${metrics.activity.prsMerged}**`,
-        `• Issues Opened / Closed: **${metrics.activity.issuesOpened}** / **${metrics.activity.issuesClosed}**`,
-        `• Releases: **${metrics.activity.releasesCount}**`,
-      ].join("\n"),
-      inline: true,
-    });
+  embed.addFields({
+    name: "📊 Activity (Past 14 Days)",
+    value: [
+      `• Commits: **${metrics.activity.commitsCount}**`,
+      `• PRs Opened / Merged: **${metrics.activity.prsOpened}** / **${metrics.activity.prsMerged}**`,
+      `• Issues Opened / Closed: **${metrics.activity.issuesOpened}** / **${metrics.activity.issuesClosed}**`,
+      `• Releases: **${metrics.activity.releasesCount}**`,
+    ].join("\n"),
+    inline: true,
+  });
 
-    // 3. Cycle Time
-    const prCycle =
-      metrics.cycleTime.avgPrCycleTimeMs > 0
-        ? formatDuration(metrics.cycleTime.avgPrCycleTimeMs)
-        : "N/A";
-    const issueCycle =
-      metrics.cycleTime.avgIssueCycleTimeMs > 0
-        ? formatDuration(metrics.cycleTime.avgIssueCycleTimeMs)
-        : "N/A";
-    embed.addFields({
-      name: "⏱️ Cycle Time",
-      value: [
-        `• Avg Time to Merge: **${prCycle}**`,
-        `• Issue Resolution: **${issueCycle}**`,
-        `• PR Throughput: **${metrics.codingMetrics.prThroughputPerWeek}/wk**`,
-      ].join("\n"),
-      inline: true,
-    });
+  embed.addFields({
+    name: "⏱️ Cycle Time & Health",
+    value: [
+      `• Avg PR Cycle: **${formatDuration(metrics.cycleTime.avgPrCycleTimeMs)}**`,
+      `• Time to Merge: **${formatDuration(metrics.cycleTime.avgTimeToMergeMs)}**`,
+      `• PR Throughput: **${metrics.codingMetrics.prThroughputPerWeek.toFixed(1)}/wk**`,
+      `• Resolution Rate: **${metrics.codingMetrics.issueResolutionRatePercent.toFixed(0)}%**`,
+    ].join("\n"),
+    inline: true,
+  });
 
-    // 4. Focus Breakdown
-    embed.addFields({
-      name: "🎯 Focus Breakdown",
-      value: [
-        `Coding: \`${renderProgressBar(metrics.focus.codingPercent, 8)}\``,
-        `Reviews: \`${renderProgressBar(metrics.focus.reviewsPercent, 8)}\``,
-        `Issues: \`${renderProgressBar(metrics.focus.issuesPercent, 8)}\``,
-        `Docs: \`${renderProgressBar(metrics.focus.docsPercent, 8)}\``,
-        `Maintenance: \`${renderProgressBar(metrics.focus.maintenancePercent, 8)}\``,
-      ].join("\n"),
-      inline: false,
-    });
+  return embed;
+}
 
-    // 5. Workload Balance (Days of Week)
-    const workloadChart = renderHorizontalBarChart(
+export function createRepoHealthEmbed(repo: GitHubRepo, health: RepoHealthScore): EmbedBuilder {
+  const bar = (pct: number) => {
+    const filled = Math.round((pct / 100) * 10);
+    return "█".repeat(filled).padEnd(10, " ");
+  };
+
+  const chart = [
+    `Activity       [${bar(health.activityScore)}]  ${health.activityScore}`,
+    `Maintenance    [${bar(health.maintenanceScore)}]  ${health.maintenanceScore}`,
+    `CI Reliability [${bar(health.ciScore)}]  ${health.ciScore}`,
+    `Community      [${bar(health.communityScore)}]  ${health.communityScore}`,
+    `Releases       [${bar(health.releasesScore)}]  ${health.releasesScore}`,
+  ].join("\n");
+
+  return createBaseEmbed(`🧬 Repository Health Score: ${health.overallScore}/100`)
+    .setColor(health.overallScore > 80 ? BrandColors.success : BrandColors.warning)
+    .setThumbnail(repo.owner.avatarUrl)
+    .setDescription(
+      `Health breakdown for [**${repo.fullName}**](${repo.htmlUrl}):\n\`\`\`text\n${chart}\n\`\`\``,
+    )
+    .addFields(
+      { name: "Commits (30d)", value: `\`${health.details.commits30d}\``, inline: true },
+      { name: "Open Issues", value: `\`${health.details.openIssuesRatio}\``, inline: true },
+      { name: "Releases", value: `\`${health.details.releasesCount}\``, inline: true },
+    );
+}
+
+export function createRepoGrowthEmbed(repo: GitHubRepo, growth: RepoGrowthMetrics): EmbedBuilder {
+  return createBaseEmbed(`📈 30-Day Growth: ${repo.fullName}`)
+    .setColor(BrandColors.primary)
+    .setURL(repo.htmlUrl)
+    .setDescription(
       [
-        { label: "Mon", value: metrics.workload.mon },
-        { label: "Tue", value: metrics.workload.tue },
-        { label: "Wed", value: metrics.workload.wed },
-        { label: "Thu", value: metrics.workload.thu },
-        { label: "Fri", value: metrics.workload.fri },
-        { label: "Sat", value: metrics.workload.sat },
-        { label: "Sun", value: metrics.workload.sun },
-      ],
-      { maxBarLength: 10 },
+        "```text",
+        `⭐ Stars Total:    ${growth.starsTotal.toLocaleString().padEnd(10)} (+${growth.starsDelta30d.toLocaleString()} 30d)`,
+        `🍴 Forks:          ${growth.forksTotal.toLocaleString().padEnd(10)} (+${growth.forksDelta30d.toLocaleString()} 30d)`,
+        `👥 Contributors:   ${growth.contributorsTotal.toString().padEnd(10)}`,
+        `🔀 Merged PRs:     ${growth.prsMerged30d.toString().padEnd(10)} (Velocity: ${(growth.prsMerged30d / 4.2).toFixed(1)}/wk)`,
+        "```",
+      ].join("\n"),
+    );
+}
+
+export function createDependenciesEmbed(repo: GitHubRepo, deps: RepoDependencies): EmbedBuilder {
+  const topDeps = deps.dependencies
+    .slice(0, 15)
+    .map((d) => `• \`${d.name}\`: \`${d.version}\`${d.isDev ? " *(dev)*" : ""}`)
+    .join("\n");
+  return createBaseEmbed(`🕸️ Dependency Graph: ${repo.fullName}`).setDescription(
+    `Manifest: \`${deps.manifestFile}\` (${deps.ecosystem})\n\n**Total Packages:** \`${deps.totalCount}\` | **Outdated:** \`${deps.outdatedCount}\`\n\n${topDeps || "No dependencies detected."}`,
+  );
+}
+
+// 2. PR POWER TOOLS
+export function createDetailedPrEmbed(
+  pr: GitHubDetailedPullRequest,
+  _repoName?: string,
+): EmbedBuilder {
+  const isReady =
+    pr.mergeable && pr.reviews.some((r) => r.state === "APPROVED") && pr.ciStatus !== "failure";
+  const statusBadge = pr.draft
+    ? "⚪ Draft"
+    : !pr.mergeable
+      ? "🔴 Merge Conflicts"
+      : isReady
+        ? "🟢 Ready to merge"
+        : "🟡 In Review";
+
+  const approvedCount = pr.reviews.filter((r) => r.state === "APPROVED").length;
+  const ciEmoji =
+    pr.ciStatus === "success"
+      ? "✅ Passing"
+      : pr.ciStatus === "failure"
+        ? "❌ Failed"
+        : "🟡 Running";
+  const conflictText = pr.mergeable === false ? "❌ Conflicts" : "✅ None";
+
+  const embed = createBaseEmbed(`🔀 PR #${pr.number}: ${pr.title}`)
+    .setURL(pr.htmlUrl)
+    .setColor(isReady ? BrandColors.success : BrandColors.warning)
+    .setDescription(
+      `**Status:** ${statusBadge}\n**Branch:** \`${pr.headBranch}\` → \`${pr.baseBranch}\` | **Author:** @${pr.author.login}\n\n\`\`\`text\nDiff:      +${pr.additions} −${pr.deletions} (${pr.changedFiles} files)\nCI:        ${ciEmoji}\nReviews:   ${approvedCount}/${Math.max(approvedCount, 2)} approvals\nConflicts: ${conflictText}\nCycle:     ${formatDuration(pr.cycleTimeMs)}\n\`\`\``,
     );
 
+  const warnings: string[] = [];
+  if (pr.changedFiles > 15 || pr.additions + pr.deletions > 500) {
+    warnings.push("⚠️ High change complexity (> 500 lines or > 15 files)");
+  }
+  if (pr.waitingOn && pr.waitingOn.length > 0) {
+    warnings.push(
+      `⚠️ Waiting on review: ${pr.waitingOn.map((u) => `@${u}`).join(", ")} (${pr.waitingHours}h)`,
+    );
+  }
+  if (pr.isStale) {
+    warnings.push("⚠️ PR has been inactive for over 14 days");
+  }
+
+  if (warnings.length > 0) {
     embed.addFields({
-      name: "📅 Workload Balance (Activity by Day)",
-      value: `\`\`\`\n${workloadChart}\n\`\`\``,
+      name: "⚡ Bottlenecks & Warnings",
+      value: warnings.join("\n"),
       inline: false,
     });
   }
 
   return embed;
+}
+
+// 3. INVESTIGATION EMBED
+export function createInvestigationEmbed(investigation: InvestigationTimeline): EmbedBuilder {
+  const steps = investigation.events
+    .map((ev, i) => {
+      const arrow = i < investigation.events.length - 1 ? "\n   │\n   ▼" : "";
+      return `**${ev.title}**\n*${ev.description}* (by @${ev.actor} • <t:${Math.floor(new Date(ev.timestamp).getTime() / 1000)}:R>)${arrow}`;
+    })
+    .join("\n");
+
+  return createBaseEmbed(`🕵️ ${investigation.title}`)
+    .setColor(BrandColors.primary)
+    .setDescription(
+      `**Target:** \`${investigation.identifier}\`\n**Summary:** ${investigation.summary}\n\n**Lifecycle Traceability Timeline:**\n\n${steps}`,
+    );
+}
+
+// 4. CODE & BLAME EMBEDS
+export function createCodeViewEmbed(repo: string, file: GitHubFileContent): EmbedBuilder {
+  const snippet = file.content.split("\n").slice(0, 15).join("\n");
+  const embed = createBaseEmbed(`🧠 ${repo}: ${file.path}`)
+    .setURL(file.htmlUrl)
+    .setDescription(
+      `**Size:** \`${formatBytes(file.size)}\` | **SHA:** \`${file.sha.slice(0, 7)}\`\n\`\`\`${file.path.split(".").pop() || ""}\n${snippet}\n\`\`\``,
+    );
+
+  if (file.lastCommit) {
+    embed.addFields({
+      name: "Last Changed",
+      value: `Commit \`${file.lastCommit.sha}\` by **@${file.lastCommit.author}**\n"${file.lastCommit.message}"${file.lastCommit.relatedPr ? ` (via **PR #${file.lastCommit.relatedPr}**)` : ""}`,
+      inline: false,
+    });
+  }
+
+  return embed;
+}
+
+export function createBlameEmbed(repo: string, path: string, blame: GitHubBlameLine): EmbedBuilder {
+  return createBaseEmbed(`🔎 Blame: ${repo}/${path} (Line ${blame.lineNumber})`).setDescription(
+    `\`\`\`text\n${blame.code}\n\`\`\`\n` +
+      `**Last Changed:** ${blame.relatedPrNumber ? `**PR #${blame.relatedPrNumber}**` : `Commit \`${blame.commitSha}\``}\n` +
+      `**Author:** @${blame.commitAuthor}\n` +
+      `**Commit:** \`${blame.commitSha}\`\n` +
+      `**Reason:** "${blame.commitMessage}"`,
+  );
+}
+
+// 5. ACTIONS TREE EMBED
+export function createActionsTreeEmbed(repo: string, runs: any[]): EmbedBuilder {
+  const lines = runs.slice(0, 5).map((r, i) => {
+    const isLast = i === runs.length - 1;
+    const prefix = isLast ? "└──" : "├──";
+    const statusEmoji =
+      r.conclusion === "success" ? "✅" : r.conclusion === "failure" ? "❌" : "🟡";
+    return `${prefix} ${r.name.padEnd(16)} ${statusEmoji} (${r.headBranch})`;
+  });
+
+  return createBaseEmbed(`⚙️ GitHub Actions: ${repo}`).setDescription(
+    `Workflow runs on default branch:\n\`\`\`text\nmain\n${lines.join("\n") || "└── No workflow runs found"}\n\`\`\``,
+  );
+}
+
+// 6. SECURITY EMBED
+export function createSecurityAuditEmbed(
+  repo: string,
+  advisories: GitHubSecurityAdvisory[],
+): EmbedBuilder {
+  const critical = advisories.filter((a) => a.severity === "critical").length;
+  const high = advisories.filter((a) => a.severity === "high").length;
+  const medium = advisories.filter((a) => a.severity === "medium").length;
+  const low = advisories.filter((a) => a.severity === "low").length;
+
+  const topItems = advisories
+    .slice(0, 5)
+    .map((a) => {
+      const badge = a.severity === "critical" ? "🔴" : a.severity === "high" ? "🟠" : "🟡";
+      return `${badge} **${a.package.name}** (${a.package.ecosystem})\nAffected: \`${a.vulnerableVersionRange}\` | Fixed: \`${a.patchedVersion || "Pending"}\`\n[${a.summary}](${a.htmlUrl})`;
+    })
+    .join("\n\n");
+
+  return createBaseEmbed(`🛡️ GitHub Security Center: ${repo}`)
+    .setColor(
+      critical > 0 ? BrandColors.danger : high > 0 ? BrandColors.warning : BrandColors.success,
+    )
+    .setDescription(
+      `**Advisories Breakdown:**\nCritical: \`${critical}\` | High: \`${high}\` | Medium: \`${medium}\` | Low: \`${low}\`\n\n${topItems || "✅ Zero active vulnerabilities detected!"}`,
+    );
+}
+
+// 7. RELEASE NOTES EMBED
+export function createReleaseNotesEmbed(repo: string, notes: any): EmbedBuilder {
+  const embed = createBaseEmbed(`🏷️ Release Notes: ${repo} (${notes.version})`).setColor(
+    BrandColors.primary,
+  );
+
+  if (notes.breaking && notes.breaking.length > 0) {
+    embed.addFields({
+      name: "⚠️ Breaking Changes",
+      value: notes.breaking.map((b: string) => `• ${b}`).join("\n"),
+      inline: false,
+    });
+  }
+
+  if (notes.features && notes.features.length > 0) {
+    embed.addFields({
+      name: "🚀 Features",
+      value: notes.features.map((f: string) => `• ${f}`).join("\n"),
+      inline: false,
+    });
+  }
+
+  if (notes.fixes && notes.fixes.length > 0) {
+    embed.addFields({
+      name: "🐛 Bug Fixes",
+      value: notes.fixes.map((f: string) => `• ${f}`).join("\n"),
+      inline: false,
+    });
+  }
+
+  if (notes.contributors && notes.contributors.length > 0) {
+    embed.addFields({
+      name: "👥 Contributors",
+      value: notes.contributors.map((c: string) => `@${c}`).join(", "),
+      inline: false,
+    });
+  }
+
+  return embed;
+}
+
+// 8. HOME COMMAND CENTER EMBED
+export function createHomeDashboardEmbed(
+  username: string,
+  userStats: { commits: number; prs: number; reviews: number; issues: number },
+  attentionItems: string[],
+  latestReleases: string[],
+  trendingRepos: string[],
+): EmbedBuilder {
+  return createBaseEmbed(`🐙 DevPulse Command Center — Welcome back, ${username}`)
+    .setColor(BrandColors.primary)
+    .setDescription(
+      `**YOUR ACTIVITY (Last 14d)**\n\`${userStats.commits}\` Commits • \`${userStats.prs}\` PRs • \`${userStats.reviews}\` Reviews • \`${userStats.issues}\` Issues\n\n**⚠️ NEEDS ATTENTION**\n${attentionItems.join("\n") || "✅ No urgent bottlenecks or failing builds!"}\n\n**🚀 RELEASES**\n${latestReleases.join("\n") || "No new releases in followed repositories."}\n\n**🔥 TRENDING ON GITHUB**\n${trendingRepos.join("\n") || "Check /trending for top rising projects."}`,
+    );
+}
+
+// 9. CONNECT STATUS EMBED
+export function createConnectStatusEmbed(
+  account: string,
+  status: "connected" | "disconnected",
+  scopes: string[],
+): EmbedBuilder {
+  return createBaseEmbed("🐙 GitHub Connection Center")
+    .setColor(status === "connected" ? BrandColors.success : BrandColors.secondary)
+    .setDescription(
+      `**GitHub Identity:** \`@${account}\`\n**Status:** ${status === "connected" ? "🟢 Connected via GitHub App" : "⚪ Disconnected"}\n**Permissions & Least Privilege:**\n• Read Public & Selected Repositories: ✅\n• Read Issues & Pull Requests: ✅\n• Read Actions & Workflows: ✅\n• Write Actions (Approve / Merge): ${scopes.includes("write") ? "🟢 Enabled" : "⚪ Disabled (Read Mode)"}\n\n*Credentials are stored encrypted using AES-256-GCM. Personal Access Tokens are never requested or stored.*`,
+    );
+}
+
+// Retain compatibility helpers
+export function createPersonalDashboardEmbed(stats: PersonalStats): EmbedBuilder {
+  return createBaseEmbed(`👨‍💻 Developer Dashboard: @${stats.githubUsername}`).addFields(
+    { name: "Total Commits", value: `${stats.activity.commits}`, inline: true },
+    { name: "PRs Merged", value: `${stats.activity.prsMerged}`, inline: true },
+  );
 }
 
 export function createRepoCommitsEmbed(repo: GitHubRepo, commits: GitHubCommit[]): EmbedBuilder {
-  const embed = new EmbedBuilder()
-    .setColor(BrandColors.primary)
-    .setTitle(`🔨 Recent Commits — ${repo.fullName}`)
-    .setURL(`${repo.htmlUrl}/commits`);
-
-  if (commits.length === 0) {
-    embed.setDescription("No recent commits found.");
-    return embed;
-  }
-
-  const lines = commits.slice(0, 10).map((c) => {
-    const shortSha = c.sha.slice(0, 7);
-    const firstLine = c.message.split("\n")[0].slice(0, 60);
-    return `[\`${shortSha}\`](${c.htmlUrl}) **${firstLine}** — *${c.author.name}*`;
-  });
-
-  embed.setDescription(lines.join("\n\n"));
-  return embed;
+  const list = commits
+    .slice(0, 10)
+    .map(
+      (c) =>
+        `• [\`${c.sha.slice(0, 7)}\`](${c.htmlUrl}) ${c.message.split("\n")[0]} — *${c.author.name}*`,
+    )
+    .join("\n");
+  return createBaseEmbed(`🔨 Recent Commits: ${repo.fullName}`).setDescription(
+    list || "No commits found.",
+  );
 }
 
 export function createRepoPrsEmbed(repo: GitHubRepo, prs: GitHubPullRequest[]): EmbedBuilder {
-  const embed = new EmbedBuilder()
-    .setColor(BrandColors.purple)
-    .setTitle(`🔀 Pull Requests — ${repo.fullName}`)
-    .setURL(`${repo.htmlUrl}/pulls`);
-
-  if (prs.length === 0) {
-    embed.setDescription("No recent pull requests found.");
-    return embed;
-  }
-
-  const lines = prs.slice(0, 10).map((pr) => {
-    const icon = pr.mergedAt ? "🟣" : pr.state === "open" ? "🟢" : "🔴";
-    return `${icon} [**#${pr.number} ${pr.title.slice(0, 55)}**](${pr.htmlUrl})\n└ *by @${pr.author.login}*`;
-  });
-
-  embed.setDescription(lines.join("\n\n"));
-  return embed;
+  const list = prs
+    .slice(0, 10)
+    .map((p) => `• [#${p.number}](${p.htmlUrl}) **${p.title}** (${p.state})`)
+    .join("\n");
+  return createBaseEmbed(`🔀 Pull Requests: ${repo.fullName}`).setDescription(
+    list || "No pull requests found.",
+  );
 }
 
 export function createRepoIssuesEmbed(repo: GitHubRepo, issues: GitHubIssue[]): EmbedBuilder {
-  const embed = new EmbedBuilder()
-    .setColor(BrandColors.warning)
-    .setTitle(`🐛 Issues — ${repo.fullName}`)
-    .setURL(`${repo.htmlUrl}/issues`);
-
-  if (issues.length === 0) {
-    embed.setDescription("No issues found.");
-    return embed;
-  }
-
-  const lines = issues.slice(0, 10).map((i) => {
-    const icon = i.state === "open" ? "🟢" : "🟣";
-    return `${icon} [**#${i.number} ${i.title.slice(0, 55)}**](${i.htmlUrl})\n└ *💬 ${i.commentsCount} comments • opened by @${i.author.login}*`;
-  });
-
-  embed.setDescription(lines.join("\n\n"));
-  return embed;
+  const list = issues
+    .slice(0, 10)
+    .map((i) => `• [#${i.number}](${i.htmlUrl}) **${i.title}** (${i.state})`)
+    .join("\n");
+  return createBaseEmbed(`🐛 Issues: ${repo.fullName}`).setDescription(list || "No issues found.");
 }
 
 export function createRepoReleasesEmbed(repo: GitHubRepo, releases: GitHubRelease[]): EmbedBuilder {
-  const embed = new EmbedBuilder()
-    .setColor(BrandColors.success)
-    .setTitle(`🚀 Releases — ${repo.fullName}`)
-    .setURL(`${repo.htmlUrl}/releases`);
-
-  if (releases.length === 0) {
-    embed.setDescription("No releases found.");
-    return embed;
-  }
-
-  const lines = releases.slice(0, 8).map((r) => {
-    const badge = r.prerelease ? "⚠️ Pre-release" : "✅ Release";
-    const date = new Date(r.publishedAt).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-    return `🏷️ [**${r.tagName} — ${r.name || r.tagName}**](${r.htmlUrl})\n└ *${badge} • published ${date}*`;
-  });
-
-  embed.setDescription(lines.join("\n\n"));
-  return embed;
-}
-
-export function createPersonalDashboardEmbed(stats: PersonalStats): EmbedBuilder {
-  const embed = new EmbedBuilder()
-    .setColor(BrandColors.info)
-    .setTitle(`👨‍💻 Developer Dashboard — @${stats.githubUsername}`)
-    .setDescription(`Productivity and activity summary for the past **${stats.periodDays} days**.`);
-
-  // 1. Activity Summary
-  embed.addFields({
-    name: "📈 Recent Activity",
-    value: [
-      `• Commits: **${stats.activity.commits}**`,
-      `• PRs Opened: **${stats.activity.prsOpened}**`,
-      `• PRs Merged: **${stats.activity.prsMerged}**`,
-      `• PR Reviews: **${stats.activity.reviews}**`,
-      `• Issues: **${stats.activity.issues}**`,
-    ].join("\n"),
-    inline: true,
-  });
-
-  // 2. Cycle Time
-  embed.addFields({
-    name: "⏱️ Cycle Time",
-    value: [
-      `• Avg PR Turnaround: **${stats.cycleTime.avgPrTime}**`,
-      `• Avg Review Response: **${stats.cycleTime.avgReviewTime}**`,
-    ].join("\n"),
-    inline: true,
-  });
-
-  // 3. Workload
-  const workloadChart = renderHorizontalBarChart(
-    [
-      { label: "Mon", value: stats.workload.Mon || 0 },
-      { label: "Tue", value: stats.workload.Tue || 0 },
-      { label: "Wed", value: stats.workload.Wed || 0 },
-      { label: "Thu", value: stats.workload.Thu || 0 },
-      { label: "Fri", value: stats.workload.Fri || 0 },
-    ],
-    { maxBarLength: 10 },
+  const list = releases
+    .slice(0, 5)
+    .map(
+      (r) =>
+        `• [**${r.name}**](${r.htmlUrl}) (\`${r.tagName}\`) — <t:${Math.floor(new Date(r.publishedAt).getTime() / 1000)}:R>`,
+    )
+    .join("\n");
+  return createBaseEmbed(`🚀 Releases: ${repo.fullName}`).setDescription(
+    list || "No releases found.",
   );
-
-  embed.addFields({
-    name: "📅 Workload Balance",
-    value: `\`\`\`\n${workloadChart}\n\`\`\``,
-    inline: false,
-  });
-
-  // 4. Focus Breakdown
-  embed.addFields({
-    name: "🎯 Focus Distribution",
-    value: [
-      `Coding: \`${renderProgressBar(stats.focus.coding, 10)}\``,
-      `Reviews: \`${renderProgressBar(stats.focus.reviews, 10)}\``,
-      `Issues: \`${renderProgressBar(stats.focus.issues, 10)}\``,
-      `Docs: \`${renderProgressBar(stats.focus.documentation, 10)}\``,
-    ].join("\n"),
-    inline: false,
-  });
-
-  return embed;
-}
-
-export function createTeamDashboardEmbed(stats: TeamStats): EmbedBuilder {
-  const embed = new EmbedBuilder()
-    .setColor(BrandColors.primary)
-    .setTitle("👥 Team Productivity & Workload Dashboard")
-    .setDescription(
-      `Health metrics across **${stats.repoCount} configured repositories** over the past **${stats.periodDays} days**.`,
-    );
-
-  embed.addFields({
-    name: "📊 Team Output",
-    value: [
-      `• Total Commits: **${stats.totalCommits}**`,
-      `• PRs Opened / Merged: **${stats.totalPrs}** / **${stats.mergedPrs}**`,
-      `• Issues Resolved: **${stats.closedIssues}**`,
-      `• Active Contributors: **${stats.activeContributors}**`,
-      `• Avg Time to Merge: **${stats.avgTimeToMerge}**`,
-    ].join("\n"),
-    inline: false,
-  });
-
-  if (stats.topRepositories.length > 0) {
-    const repoList = stats.topRepositories.map(
-      (r) => `• **${r.name}** — ⭐ \`${r.stars}\` | 🐛 \`${r.openIssues} open issues\``,
-    );
-    embed.addFields({
-      name: "📁 Monitored Repositories",
-      value: repoList.join("\n"),
-      inline: false,
-    });
-  }
-
-  return embed;
 }
 
 export function createSecurityAlertEmbed(secret: DetectedSecret): EmbedBuilder {
-  return new EmbedBuilder()
+  return createBaseEmbed("🚨 Secret Leak Detected")
     .setColor(BrandColors.danger)
-    .setTitle("🚨 Potential Secret Detected in Message")
     .setDescription(
-      `A sensitive credential pattern was detected in your message. Immediate rotation is recommended to prevent unauthorized access.\n\n**Secret Type:** \`${secret.type}\`\n**Masked Value:** \`${secret.maskedSnippet}\`\n**Fingerprint:** \`${secret.fingerprintHash}\`\n\n🛡️ **Recommended Action:**\n${secret.recommendation}`,
-    )
-    .setFooter({ text: "DevPulse Zero-Log Secret Scanner • Secret was NOT stored or logged" })
-    .setTimestamp();
-}
-
-export function createCveEmbed(record: VulnerabilityRecord): EmbedBuilder {
-  const embed = new EmbedBuilder()
-    .setColor(BrandColors.danger)
-    .setTitle(`🛡️ ${record.id}`)
-    .setDescription(record.summary.slice(0, 1000));
-
-  if (record.affectedPackage) {
-    embed.addFields({
-      name: "📦 Affected Package",
-      value: `\`${record.affectedPackage.name}\` (${record.affectedPackage.ecosystem})`,
-      inline: true,
-    });
-  }
-
-  embed.addFields({
-    name: "⚠️ Severity",
-    value: `\`${record.severity || "Unknown"}\``,
-    inline: true,
-  });
-
-  if (record.fixedVersions.length > 0) {
-    embed.addFields({
-      name: "✅ Fixed In",
-      value: record.fixedVersions.map((v) => `\`${v}\``).join(", "),
-      inline: false,
-    });
-  }
-
-  if (record.references.length > 0) {
-    embed.addFields({
-      name: "🔗 References",
-      value: record.references.map((r) => `• [${new URL(r).hostname}](${r})`).join("\n"),
-      inline: false,
-    });
-  }
-
-  return embed;
-}
-
-export function createMonitorStatusEmbed(monitor: any, history: any[]): EmbedBuilder {
-  const isUp = monitor.isHealthy;
-  const color = isUp ? BrandColors.success : BrandColors.danger;
-  const statusEmoji = isUp ? "🟢 UP" : "🔴 DOWN";
-
-  const embed = new EmbedBuilder()
-    .setColor(color)
-    .setTitle(`📡 Monitor: ${monitor.name}`)
-    .setDescription(`**Target:** \`${monitor.url}\`\n**Current Status:** ${statusEmoji}`)
-    .addFields(
-      { name: "HTTP Status", value: `\`${monitor.lastStatus ?? "N/A"}\``, inline: true },
-      {
-        name: "Latency",
-        value: `\`${monitor.lastResponseTimeMs ? `${monitor.lastResponseTimeMs}ms` : "N/A"}\``,
-        inline: true,
-      },
-      { name: "Check Interval", value: `\`${monitor.intervalSeconds}s\``, inline: true },
+      `A credential pattern matching **${secret.type}** was detected.\n\n**Fingerprint:** \`${secret.fingerprintHash.slice(0, 16)}...\`\n⚠️ **Action Required:** Revoke this credential immediately and delete the message below.`,
     );
-
-  if (monitor.lastError) {
-    embed.addFields({ name: "⚠️ Last Error", value: `\`${monitor.lastError}\``, inline: false });
-  }
-
-  if (history.length > 0) {
-    const sparklineValues = history.map((h) => h.responseTimeMs).reverse();
-    const sparkline = renderSparkline(sparklineValues);
-    const historyText = history
-      .slice(0, 5)
-      .map((h) => {
-        const icon = h.isHealthy ? "🟢" : "🔴";
-        const code = h.statusCode ?? "ERR";
-        const date = new Date(h.checkedAt).toLocaleTimeString("en-US", { hour12: false });
-        return `${icon} \`${code}\` (${h.responseTimeMs}ms) at ${date}`;
-      })
-      .join("\n");
-
-    embed.addFields({
-      name: `📜 Recent Checks (${sparkline})`,
-      value: historyText,
-      inline: false,
-    });
-  }
-
-  return embed;
-}
-
-export function createNewsEmbed(items: NewsItem[], category: string): EmbedBuilder {
-  const embed = new EmbedBuilder()
-    .setColor(BrandColors.primary)
-    .setTitle(`📰 Developer News — ${category.toUpperCase()}`)
-    .setDescription(`Latest headlines curated from verified tech feeds.`);
-
-  if (items.length === 0) {
-    embed.setDescription("No recent news found for this category.");
-    return embed;
-  }
-
-  for (const item of items.slice(0, 5)) {
-    embed.addFields({
-      name: item.title,
-      value: `${item.summary}\n🔗 [Read on ${item.source}](${item.url})`,
-      inline: false,
-    });
-  }
-
-  return embed;
-}
-
-export function createTrendingEmbed(
-  repos: TrendingRepo[],
-  tech: TrendingTech[],
-  category = "repositories",
-): EmbedBuilder {
-  const embed = new EmbedBuilder()
-    .setColor(BrandColors.primary)
-    .setTitle("🔥 Trending in Developer Ecosystem")
-    .setFooter({ text: "Updated live from public GitHub & open source registries" });
-
-  if (category === "technologies") {
-    embed.setDescription("Fastest growing developer tools, frameworks, and engines.");
-    for (const t of tech) {
-      embed.addFields({
-        name: `${t.name} (${t.growth})`,
-        value: `*${t.category}*\n${t.description}`,
-        inline: false,
-      });
-    }
-    return embed;
-  }
-
-  embed.setDescription("Top trending GitHub repositories with highest star velocity.");
-  if (repos.length === 0) {
-    embed.setDescription("No trending repositories retrieved at this moment.");
-    return embed;
-  }
-
-  for (const r of repos.slice(0, 5)) {
-    embed.addFields({
-      name: `⭐ ${r.fullName} (\`${r.language}\`)`,
-      value: `${r.description}\n⭐ \`${r.stars.toLocaleString()}\` stars | 🍴 \`${r.forks.toLocaleString()}\` forks\n[View Repository](${r.url})`,
-      inline: false,
-    });
-  }
-
-  return embed;
 }

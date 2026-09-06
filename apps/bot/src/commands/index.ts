@@ -1,38 +1,44 @@
-import { aiCommand } from "./ai.js";
-import { analyticsCommand } from "./analytics.js";
-import { depsCommand } from "./deps.js";
-import { devCommand } from "./dev.js";
-import { githubCommand } from "./github.js";
+import { actionsCommand } from "./actions.js";
+import { activityCommand } from "./activity.js";
+import { askCommand } from "./ask.js";
+import { codeCommand } from "./code.js";
+import { connectCommand } from "./connect.js";
 import { helpCommand } from "./help.js";
-import { monitorCommand } from "./monitor.js";
-import { newsCommand } from "./news.js";
-import { projectCommand } from "./project.js";
-import { remindCommand } from "./remind.js";
+import { homeCommand } from "./home.js";
+import { investigateCommand } from "./investigate.js";
+import { prCommand } from "./pr.js";
+import { releaseCommand } from "./release.js";
+import { repoCommand } from "./repo.js";
+import { searchCommand } from "./search.js";
 import { securityCommand } from "./security.js";
 import { settingsCommand } from "./settings.js";
-import { setupCommand } from "./setup.js";
 import { teamCommand } from "./team.js";
 import { toolsCommand } from "./tools.js";
 import { trendingCommand } from "./trending.js";
 import type { Command } from "./types.js";
+import { watchCommand } from "./watch.js";
+import { whyCommand } from "./why.js";
 
 export const commands: Command[] = [
-  githubCommand,
-  devCommand,
-  toolsCommand,
-  depsCommand,
-  securityCommand,
-  monitorCommand,
+  repoCommand,
+  prCommand,
+  searchCommand,
+  codeCommand,
+  investigateCommand,
+  activityCommand,
   trendingCommand,
-  newsCommand,
+  watchCommand,
+  actionsCommand,
+  securityCommand,
+  releaseCommand,
   teamCommand,
-  analyticsCommand,
-  remindCommand,
-  projectCommand,
+  homeCommand,
+  connectCommand,
+  whyCommand,
+  askCommand,
+  toolsCommand,
   settingsCommand,
   helpCommand,
-  setupCommand,
-  aiCommand,
 ];
 
 export const commandMap = new Map<string, Command>(commands.map((cmd) => [cmd.data.name, cmd]));

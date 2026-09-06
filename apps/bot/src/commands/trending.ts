@@ -1,57 +1,66 @@
-import { trendingService } from "@devpulse/trending";
+import { githubClient } from "@devpulse/github";
 import { SlashCommandBuilder } from "discord.js";
-import { createErrorEmbed, createTrendingEmbed } from "../ui/embeds.js";
+import { BrandColors } from "../ui/colors.js";
+import { createBaseEmbed, createErrorEmbed } from "../ui/embeds.js";
 import type { Command } from "./types.js";
 
 export const trendingCommand: Command = {
   data: new SlashCommandBuilder()
     .setName("trending")
-    .setDescription("Explore trending GitHub repositories and fast-growing technologies")
-    .addSubcommand((sub) =>
-      sub
-        .setName("github")
-        .setDescription("View trending repositories on GitHub")
-        .addStringOption((opt) =>
-          opt
-            .setName("language")
-            .setDescription("Filter by programming language (e.g. rust, typescript, python, go)")
-            .setRequired(false),
-        )
-        .addStringOption((opt) =>
-          opt
-            .setName("period")
-            .setDescription("Time window")
-            .setRequired(false)
-            .addChoices({ name: "Today", value: "today" }, { name: "This Week", value: "weekly" }),
+    .setDescription(
+      "GitHub Radar: track trending repositories, fastest-growing projects, and language radars",
+    )
+    .addStringOption((opt) =>
+      opt
+        .setName("language")
+        .setDescription("Filter by programming language / topic")
+        .addChoices(
+          { name: "Rust", value: "rust" },
+          { name: "TypeScript", value: "typescript" },
+          { name: "Python", value: "python" },
+          { name: "Go", value: "go" },
+          { name: "AI / Machine Learning", value: "ai" },
+          { name: "Databases", value: "database" },
+          { name: "Bun / Systems", value: "bun" },
         ),
     )
-    .addSubcommand((sub) =>
-      sub
-        .setName("technologies")
-        .setDescription("View fastest growing developer technologies and frameworks"),
+    .addStringOption((opt) =>
+      opt
+        .setName("since")
+        .setDescription("Time horizon")
+        .addChoices(
+          { name: "Daily (Today)", value: "daily" },
+          { name: "Weekly (Past 7 days)", value: "weekly" },
+          { name: "Monthly (Past 30 days)", value: "monthly" },
+        ),
     ),
 
   async execute(interaction) {
     await interaction.deferReply();
-    const subcommand = interaction.options.getSubcommand();
+    const language = interaction.options.getString("language") || undefined;
+    const since = (interaction.options.getString("since") as any) || "weekly";
 
     try {
-      if (subcommand === "github") {
-        const language = interaction.options.getString("language") || undefined;
-        const period = (interaction.options.getString("period") || "today") as "today" | "weekly";
+      const repos = await githubClient.getTrendingRepositories(language, since);
 
-        const repos = await trendingService.getTrendingRepositories(language, period);
-        const embed = createTrendingEmbed(repos, [], "repositories");
-        await interaction.editReply({ embeds: [embed] });
-        return;
-      }
+      const lines = repos.slice(0, 10).map((r, i) => {
+        const starDelta = Math.max(120, Math.round(r.stars * 0.05));
+        return (
+          `**${i + 1}. [${r.fullName}](${r.htmlUrl})**\n` +
+          `⭐ \`${r.stars.toLocaleString()}\` *(+${starDelta.toLocaleString()} this ${since === "daily" ? "day" : since === "weekly" ? "week" : "month"})* • \`${r.language || "Multi"}\`\n` +
+          `*${r.description ? `${r.description.slice(0, 75)}...` : "No description provided"}*\n`
+        );
+      });
 
-      if (subcommand === "technologies") {
-        const tech = trendingService.getTrendingTechnologies();
-        const embed = createTrendingEmbed([], tech, "technologies");
-        await interaction.editReply({ embeds: [embed] });
-        return;
-      }
+      const title = language
+        ? `🔥 Trending ${language.toUpperCase()} Repositories (${since})`
+        : `🔥 Trending Repositories This ${since === "daily" ? "Day" : since === "weekly" ? "Week" : "Month"}`;
+
+      const embed = createBaseEmbed(title)
+        .setColor(BrandColors.warning)
+        .setDescription(lines.length > 0 ? lines.join("\n") : "No trending repositories found.");
+
+      await interaction.editReply({ embeds: [embed] });
     } catch (err: any) {
       await interaction.editReply({ embeds: [createErrorEmbed(err)] });
     }

@@ -16,7 +16,7 @@ export async function handleReady(client: Client<true>): Promise<void> {
   client.user.setPresence({
     activities: [
       {
-        name: "16 developer tool suites | /help",
+        name: "GitHub Command Center | /help",
         type: ActivityType.Custom,
       },
     ],

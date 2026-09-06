@@ -3,7 +3,6 @@ import { config } from "@devpulse/config";
 import { RateLimitError } from "@devpulse/core";
 import { computeRepoDashboardMetrics, githubClient } from "@devpulse/github";
 import { logger } from "@devpulse/logger";
-import { type NewsCategory, newsService } from "@devpulse/news";
 import {
   type ButtonInteraction,
   type ChatInputCommandInteraction,
@@ -13,10 +12,9 @@ import {
 } from "discord.js";
 import { getModuleHelpEmbed } from "../commands/help.js";
 import { commandMap } from "../commands/index.js";
-import { createNewsCategorySelect, createRepoNavButtons } from "../ui/components.js";
+import { createRepoNavButtons } from "../ui/components.js";
 import {
   createErrorEmbed,
-  createNewsEmbed,
   createRepoCommitsEmbed,
   createRepoDashboardEmbed,
   createRepoIssuesEmbed,
@@ -97,11 +95,11 @@ async function handleSlashCommand(interaction: ChatInputCommandInteraction): Pro
 }
 
 async function handleButtonClick(interaction: ButtonInteraction): Promise<void> {
-  const [prefix, action, owner, repo] = interaction.customId.split(":");
+  const [prefix, action, owner, repo, extra] = interaction.customId.split(":");
 
-  // Secret deletion button
+  // 1. Secret deletion button
   if (prefix === "secret" && action === "delete") {
-    const messageId = owner; // in this case, owner field stores messageId
+    const messageId = owner;
     try {
       const channel = interaction.channel;
       if (channel && "messages" in channel) {
@@ -137,7 +135,59 @@ async function handleButtonClick(interaction: ButtonInteraction): Promise<void> 
     return;
   }
 
-  // Repository Navigation Buttons
+  // 2. PR Action Buttons (Approve / Request Changes / Merge)
+  if (prefix === "pr" && owner && repo && extra) {
+    await interaction.deferReply({ ephemeral: true });
+    const repoInput = `${owner}/${repo}`;
+    const prNumber = Number.parseInt(extra, 10);
+
+    try {
+      if (action === "approve") {
+        await githubClient.createReview(repoInput, prNumber, "APPROVE");
+        await interaction.editReply({
+          content: `✅ Successfully approved [PR #${prNumber}](https://github.com/${repoInput}/pull/${prNumber})!`,
+        });
+        return;
+      }
+
+      if (action === "request_changes") {
+        await githubClient.createReview(
+          repoInput,
+          prNumber,
+          "REQUEST_CHANGES",
+          "Changes requested via DevPulse review",
+        );
+        await interaction.editReply({
+          content: `⚠️ Requested changes on [PR #${prNumber}](https://github.com/${repoInput}/pull/${prNumber}).`,
+        });
+        return;
+      }
+
+      if (action === "merge") {
+        const result = await githubClient.mergePullRequest(repoInput, prNumber, "merge");
+        await interaction.editReply({
+          content: `🔀 Successfully merged [PR #${prNumber}](https://github.com/${repoInput}/pull/${prNumber})!\n${result.message || ""}`,
+        });
+        return;
+      }
+    } catch (err: any) {
+      await interaction.editReply({
+        content: `❌ PR Action failed: ${err.message}`,
+      });
+    }
+    return;
+  }
+
+  // 3. Home Navigation Buttons
+  if (prefix === "home" && action === "nav") {
+    await interaction.reply({
+      content: `📌 Use \`/repo\`, \`/pr\`, or \`/activity\` for detailed deep-dives.`,
+      ephemeral: true,
+    });
+    return;
+  }
+
+  // 4. Repository Navigation Buttons
   if (prefix === "repo" && owner && repo) {
     await interaction.deferUpdate();
     const repoInput = `${owner}/${repo}`;
@@ -204,14 +254,6 @@ async function handleSelectMenu(interaction: StringSelectMenuInteraction): Promi
   if (customId === "help:category_select") {
     const embed = getModuleHelpEmbed(selectedValue);
     await interaction.update({ embeds: [embed] });
-    return;
-  }
-
-  if (customId === "news:category_select") {
-    await interaction.deferUpdate();
-    const items = await newsService.getLatestNews(selectedValue as NewsCategory, 5);
-    const embed = createNewsEmbed(items, selectedValue);
-    await interaction.editReply({ embeds: [embed], components: [createNewsCategorySelect()] });
     return;
   }
 }

@@ -18,13 +18,8 @@ export function createRepoNavButtons(
       .setStyle(activeTab === "overview" ? ButtonStyle.Primary : ButtonStyle.Secondary)
       .setEmoji("📌"),
     new ButtonBuilder()
-      .setCustomId(`repo:commits:${owner}:${repo}`)
-      .setLabel("Commits")
-      .setStyle(activeTab === "commits" ? ButtonStyle.Primary : ButtonStyle.Secondary)
-      .setEmoji("🔨"),
-    new ButtonBuilder()
       .setCustomId(`repo:prs:${owner}:${repo}`)
-      .setLabel("Pull Requests")
+      .setLabel("PRs")
       .setStyle(activeTab === "prs" ? ButtonStyle.Primary : ButtonStyle.Secondary)
       .setEmoji("🔀"),
     new ButtonBuilder()
@@ -33,6 +28,11 @@ export function createRepoNavButtons(
       .setStyle(activeTab === "issues" ? ButtonStyle.Primary : ButtonStyle.Secondary)
       .setEmoji("🐛"),
     new ButtonBuilder()
+      .setCustomId(`repo:commits:${owner}:${repo}`)
+      .setLabel("Commits")
+      .setStyle(activeTab === "commits" ? ButtonStyle.Primary : ButtonStyle.Secondary)
+      .setEmoji("🔨"),
+    new ButtonBuilder()
       .setCustomId(`repo:releases:${owner}:${repo}`)
       .setLabel("Releases")
       .setStyle(activeTab === "releases" ? ButtonStyle.Primary : ButtonStyle.Secondary)
@@ -40,6 +40,63 @@ export function createRepoNavButtons(
   );
 
   return [row1];
+}
+
+export function createPrActionButtons(
+  owner: string,
+  repo: string,
+  prNumber: number,
+  prUrl: string,
+): ActionRowBuilder<ButtonBuilder>[] {
+  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`pr:approve:${owner}:${repo}:${prNumber}`)
+      .setLabel("Approve")
+      .setStyle(ButtonStyle.Success)
+      .setEmoji("✅"),
+    new ButtonBuilder()
+      .setCustomId(`pr:request_changes:${owner}:${repo}:${prNumber}`)
+      .setLabel("Request Changes")
+      .setStyle(ButtonStyle.Danger)
+      .setEmoji("⚠️"),
+    new ButtonBuilder()
+      .setCustomId(`pr:merge:${owner}:${repo}:${prNumber}`)
+      .setLabel("Merge")
+      .setStyle(ButtonStyle.Primary)
+      .setEmoji("🔀"),
+    new ButtonBuilder()
+      .setLabel("Open GitHub")
+      .setStyle(ButtonStyle.Link)
+      .setURL(prUrl)
+      .setEmoji("↗️"),
+  );
+  return [row];
+}
+
+export function createHomeNavButtons(): ActionRowBuilder<ButtonBuilder>[] {
+  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId("home:nav:repos")
+      .setLabel("Repositories")
+      .setStyle(ButtonStyle.Secondary)
+      .setEmoji("📁"),
+    new ButtonBuilder()
+      .setCustomId("home:nav:prs")
+      .setLabel("Pull Requests")
+      .setStyle(ButtonStyle.Secondary)
+      .setEmoji("🔀"),
+    new ButtonBuilder()
+      .setCustomId("home:nav:issues")
+      .setLabel("Issues")
+      .setStyle(ButtonStyle.Secondary)
+      .setEmoji("🐛"),
+    new ButtonBuilder()
+      .setCustomId("home:nav:activity")
+      .setLabel("Activity")
+      .setStyle(ButtonStyle.Secondary)
+      .setEmoji("📈"),
+  );
+  return [row];
 }
 
 export function createDeleteSecretButton(messageId: string): ActionRowBuilder<ButtonBuilder> {
@@ -62,95 +119,48 @@ export function createDeleteSecretButton(messageId: string): ActionRowBuilder<Bu
 export function createHelpSelect(): ActionRowBuilder<StringSelectMenuBuilder> {
   const menu = new StringSelectMenuBuilder()
     .setCustomId("help:category_select")
-    .setPlaceholder("Select a command module...")
+    .setPlaceholder("Explore GitHub Power-User Feature Areas...")
     .addOptions(
       new StringSelectMenuOptionBuilder()
-        .setLabel("GitHub Intelligence")
-        .setDescription("Repository dashboards, commits, PRs, cycle time")
-        .setValue("github")
-        .setEmoji("📦"),
+        .setLabel("Repository Intelligence (/repo)")
+        .setDescription("Health score, growth, dependencies, metrics")
+        .setValue("repo")
+        .setEmoji("📊"),
       new StringSelectMenuOptionBuilder()
-        .setLabel("Developer Productivity")
-        .setDescription("Personal developer dashboards, workload, focus")
-        .setValue("dev")
-        .setEmoji("👨‍💻"),
+        .setLabel("Pull Request Tools (/pr)")
+        .setDescription("Stale detection, CI checks, diffs, 1-click merge")
+        .setValue("pr")
+        .setEmoji("🔀"),
       new StringSelectMenuOptionBuilder()
-        .setLabel("Developer Toolbox")
-        .setDescription("30+ deterministic tools (JSON, JWT, Hash, Regex, Cron)")
-        .setValue("tools")
-        .setEmoji("🛠️"),
+        .setLabel("GitHub Search Engine (/search)")
+        .setDescription("Code, issues, PRs, repos, commits qualifiers")
+        .setValue("search")
+        .setEmoji("🔎"),
       new StringSelectMenuOptionBuilder()
-        .setLabel("Security Center")
-        .setDescription("CVE lookup, package vulnerabilities, secret detection")
-        .setValue("security")
-        .setEmoji("🛡️"),
+        .setLabel("Code Intelligence (/code & /why)")
+        .setDescription("File inspection, blame, PR link tracing")
+        .setValue("code")
+        .setEmoji("🧠"),
       new StringSelectMenuOptionBuilder()
-        .setLabel("Website & Uptime Monitoring")
-        .setDescription("Synthetic HTTP, latency, SSL expiration checks")
-        .setValue("monitor")
-        .setEmoji("📡"),
+        .setLabel("Investigation (/investigate)")
+        .setDescription("Chronological lifecycle timeline: Issue -> Commit -> PR -> Release")
+        .setValue("investigate")
+        .setEmoji("🕵️"),
       new StringSelectMenuOptionBuilder()
-        .setLabel("Trending & News")
-        .setDescription("Trending repositories, languages, tech headlines")
-        .setValue("trending")
-        .setEmoji("🔥"),
-      new StringSelectMenuOptionBuilder()
-        .setLabel("Team & Workflows")
-        .setDescription("Standups, reminders, project context memory")
-        .setValue("team")
-        .setEmoji("👥"),
-      new StringSelectMenuOptionBuilder()
-        .setLabel("Server Settings")
-        .setDescription("Channels, timezone, secret scanning, AI toggle")
-        .setValue("settings")
+        .setLabel("Actions Control Center (/actions)")
+        .setDescription("Visual tree, run inspection, rerun & cancel")
+        .setValue("actions")
         .setEmoji("⚙️"),
-    );
-
-  return new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(menu);
-}
-
-export function createNewsCategorySelect(): ActionRowBuilder<StringSelectMenuBuilder> {
-  const menu = new StringSelectMenuBuilder()
-    .setCustomId("news:category_select")
-    .setPlaceholder("Filter by category...")
-    .addOptions(
       new StringSelectMenuOptionBuilder()
-        .setLabel("Developer & Architecture")
-        .setValue("developer")
-        .setEmoji("💻"),
-      new StringSelectMenuOptionBuilder()
-        .setLabel("Security & Vulnerabilities")
+        .setLabel("Security (/security)")
+        .setDescription("Dependabot alerts, advisories, CVE breakdown")
         .setValue("security")
         .setEmoji("🛡️"),
       new StringSelectMenuOptionBuilder()
-        .setLabel("GitHub & Open Source")
-        .setValue("github")
-        .setEmoji("🐙"),
-      new StringSelectMenuOptionBuilder()
-        .setLabel("AI & Machine Learning")
-        .setValue("ai")
-        .setEmoji("🤖"),
-      new StringSelectMenuOptionBuilder()
-        .setLabel("Cloud & DevOps")
-        .setValue("cloud")
-        .setEmoji("☁️"),
-      new StringSelectMenuOptionBuilder()
-        .setLabel("Databases & Storage")
-        .setValue("databases")
-        .setEmoji("🗄️"),
-      new StringSelectMenuOptionBuilder()
-        .setLabel("Web Development & Frontend")
-        .setValue("web")
-        .setEmoji("🌐"),
-      new StringSelectMenuOptionBuilder()
-        .setLabel("Rust & Systems")
-        .setValue("rust")
-        .setEmoji("🦀"),
-      new StringSelectMenuOptionBuilder().setLabel("Go & Backend").setValue("go").setEmoji("🐹"),
-      new StringSelectMenuOptionBuilder()
-        .setLabel("TypeScript & JavaScript")
-        .setValue("typescript")
-        .setEmoji("📜"),
+        .setLabel("Watchtower (/watch)")
+        .setDescription("Automated Discord alerts for releases, PRs, issues")
+        .setValue("watch")
+        .setEmoji("🚨"),
     );
 
   return new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(menu);
