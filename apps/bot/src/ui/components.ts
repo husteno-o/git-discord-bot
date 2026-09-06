@@ -15,23 +15,23 @@ export function createRepoNavButtons(
   const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
       .setCustomId(`repo:overview:${owner}:${repo}`)
-      .setLabel(`${NF.github} Overview`)
+      .setLabel("Overview")
       .setStyle(activeTab === "overview" ? ButtonStyle.Primary : ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId(`repo:prs:${owner}:${repo}`)
-      .setLabel(`${NF.gitPullRequest} PRs`)
+      .setLabel("PRs")
       .setStyle(activeTab === "prs" ? ButtonStyle.Primary : ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId(`repo:issues:${owner}:${repo}`)
-      .setLabel(" Issues")
+      .setLabel("Issues")
       .setStyle(activeTab === "issues" ? ButtonStyle.Primary : ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId(`repo:commits:${owner}:${repo}`)
-      .setLabel(`${NF.gitCommit} Commits`)
+      .setLabel("Commits")
       .setStyle(activeTab === "commits" ? ButtonStyle.Primary : ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId(`repo:releases:${owner}:${repo}`)
-      .setLabel(`${NF.gitTag} Releases`)
+      .setLabel("Releases")
       .setStyle(activeTab === "releases" ? ButtonStyle.Primary : ButtonStyle.Secondary),
   );
 
@@ -57,10 +57,7 @@ export function createPrActionButtons(
       .setCustomId(`pr:merge:${owner}:${repo}:${prNumber}`)
       .setLabel(`${NF.gitMerge} Merge`)
       .setStyle(ButtonStyle.Primary),
-    new ButtonBuilder()
-      .setLabel(`${NF.arrowRight} Open GitHub`)
-      .setStyle(ButtonStyle.Link)
-      .setURL(prUrl),
+    new ButtonBuilder().setLabel("Open GitHub ↗").setStyle(ButtonStyle.Link).setURL(prUrl),
   );
   return [row];
 }
@@ -69,19 +66,19 @@ export function createHomeNavButtons(): ActionRowBuilder<ButtonBuilder>[] {
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
       .setCustomId("home:nav:repos")
-      .setLabel(`${NF.package} Repositories`)
+      .setLabel("Repositories")
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId("home:nav:prs")
-      .setLabel(`${NF.gitPullRequest} Pull Requests`)
+      .setLabel("Pull Requests")
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId("home:nav:issues")
-      .setLabel(" Issues")
+      .setLabel("Issues")
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId("home:nav:activity")
-      .setLabel(`${NF.speedometer} Activity`)
+      .setLabel("Activity")
       .setStyle(ButtonStyle.Secondary),
   );
   return [row];
@@ -94,7 +91,7 @@ export function createDeleteSecretButton(messageId: string): ActionRowBuilder<Bu
       .setLabel(`${NF.cross} Delete Leaked Message`)
       .setStyle(ButtonStyle.Danger),
     new ButtonBuilder()
-      .setLabel(`${NF.shield} Security Guide`)
+      .setLabel("Security Guide ↗")
       .setStyle(ButtonStyle.Link)
       .setURL(
         "https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/token-expiration-and-revocation",
@@ -108,35 +105,35 @@ export function createHelpSelect(): ActionRowBuilder<StringSelectMenuBuilder> {
     .setPlaceholder("Select a GitHub developer suite...")
     .addOptions(
       new StringSelectMenuOptionBuilder()
-        .setLabel(`${NF.github} Repository Intelligence (/repo)`)
+        .setLabel(`${NF.github} 1. Repository Intelligence (/repo)`)
         .setDescription("Health score, growth, dependencies, metrics")
         .setValue("repo"),
       new StringSelectMenuOptionBuilder()
-        .setLabel(`${NF.gitPullRequest} Pull Request Tools (/pr)`)
+        .setLabel(`${NF.gitPullRequest} 2. Pull Request Tools (/pr)`)
         .setDescription("Stale detection, CI checks, diffs, 1-click merge")
         .setValue("pr"),
       new StringSelectMenuOptionBuilder()
-        .setLabel(`${NF.search} GitHub Search Engine (/search)`)
+        .setLabel(`${NF.search} 3. GitHub Search Engine (/search)`)
         .setDescription("Code, issues, PRs, repos, commits qualifiers")
         .setValue("search"),
       new StringSelectMenuOptionBuilder()
-        .setLabel(`${NF.terminal} Code Intelligence (/code & /why)`)
+        .setLabel(`${NF.terminal} 4. Code Intelligence (/code & /why)`)
         .setDescription("File inspection, blame, PR link tracing")
         .setValue("code"),
       new StringSelectMenuOptionBuilder()
-        .setLabel(`${NF.speedometer} Investigation (/investigate)`)
+        .setLabel(`${NF.speedometer} 5. Investigation (/investigate)`)
         .setDescription("Lifecycle timeline: Issue -> Commit -> PR -> Release")
         .setValue("investigate"),
       new StringSelectMenuOptionBuilder()
-        .setLabel(`${NF.robot} Actions Control Center (/actions)`)
+        .setLabel(`${NF.robot} 6. Actions Control Center (/actions)`)
         .setDescription("Visual tree, run inspection, rerun & cancel")
         .setValue("actions"),
       new StringSelectMenuOptionBuilder()
-        .setLabel(`${NF.shield} Security Center (/security)`)
+        .setLabel(`${NF.shield} 7. Security Center (/security)`)
         .setDescription("Dependabot alerts, advisories, CVE breakdown")
         .setValue("security"),
       new StringSelectMenuOptionBuilder()
-        .setLabel(`${NF.warning} Watchtower Alerts (/watch)`)
+        .setLabel(`${NF.warning} 8. Watchtower Alerts (/watch)`)
         .setDescription("Automated Discord alerts for releases, PRs, issues")
         .setValue("watch"),
     );
