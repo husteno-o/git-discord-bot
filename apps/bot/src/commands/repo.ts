@@ -14,99 +14,76 @@ export const repoCommand: Command = {
   data: new SlashCommandBuilder()
     .setName("repo")
     .setDescription("Repository Intelligence, health scores, dependencies, and growth metrics")
-    .addSubcommand((sub) =>
-      sub
+    .addStringOption((opt) =>
+      opt
+        .setName("repository")
+        .setDescription(
+          "Repository format 'owner/repo' (e.g. vercel/next.js, swadhinbiswas/warren)",
+        )
+        .setRequired(true),
+    )
+    .addStringOption((opt) =>
+      opt
         .setName("view")
-        .setDescription("View master repository intelligence dashboard")
-        .addStringOption((opt) =>
-          opt
-            .setName("name")
-            .setDescription("Repository format 'owner/repo' (e.g. vercel/next.js)")
-            .setRequired(true),
-        ),
-    )
-    .addSubcommand((sub) =>
-      sub
-        .setName("health")
-        .setDescription("Calculate comprehensive repository health score (0-100)")
-        .addStringOption((opt) =>
-          opt
-            .setName("name")
-            .setDescription("Repository format 'owner/repo' (e.g. vercel/next.js)")
-            .setRequired(true),
-        ),
-    )
-    .addSubcommand((sub) =>
-      sub
-        .setName("dependencies")
-        .setDescription("Inspect repository dependency graph and manifests")
-        .addStringOption((opt) =>
-          opt
-            .setName("name")
-            .setDescription("Repository format 'owner/repo' (e.g. vercel/next.js)")
-            .setRequired(true),
-        ),
-    )
-    .addSubcommand((sub) =>
-      sub
-        .setName("growth")
-        .setDescription("Track 30-day repository growth and velocity")
-        .addStringOption((opt) =>
-          opt
-            .setName("name")
-            .setDescription("Repository format 'owner/repo' (e.g. vercel/next.js)")
-            .setRequired(true),
-        ),
+        .setDescription("View to display (default: Overview Dashboard)")
+        .addChoices(
+          { name: "Overview Dashboard", value: "overview" },
+          { name: "Health Score", value: "health" },
+          { name: "Dependencies", value: "dependencies" },
+          { name: "Growth & Velocity", value: "growth" },
+        )
+        .setRequired(false),
     ),
 
   async execute(interaction) {
     await interaction.deferReply();
-    const subcommand = interaction.options.getSubcommand();
-    const repoInput = interaction.options.getString("name", true);
+    const repoInput = interaction.options.getString("repository", true);
+    const view = interaction.options.getString("view") || "overview";
 
     try {
       const { owner, repo } = githubClient.parseRepoInput(repoInput);
 
-      if (subcommand === "view") {
+      if (view === "health") {
         const ghRepo = await githubClient.getRepo(repoInput);
-        const [commits, prs, issues, releases] = await Promise.all([
-          githubClient.getCommits(repoInput, 30).catch(() => []),
-          githubClient.getPullRequests(repoInput, "all", 30).catch(() => []),
-          githubClient.getIssues(repoInput, "all", 30).catch(() => []),
-          githubClient.getReleases(repoInput, 10).catch(() => []),
-        ]);
-
-        const metrics = computeRepoDashboardMetrics(commits, prs, issues, releases);
-        const embed = createRepoDashboardEmbed(ghRepo, metrics, "overview");
-        const components = createRepoNavButtons(owner, repo, "overview");
-
+        const health = await githubClient.getHealthScore(repoInput);
+        const embed = createRepoHealthEmbed(ghRepo, health);
+        const components = createRepoNavButtons(owner, repo, "health");
         await interaction.editReply({ embeds: [embed], components });
         return;
       }
 
-      if (subcommand === "health") {
-        const ghRepo = await githubClient.getRepo(repoInput);
-        const health = await githubClient.getHealthScore(repoInput);
-        const embed = createRepoHealthEmbed(ghRepo, health);
-        await interaction.editReply({ embeds: [embed] });
-        return;
-      }
-
-      if (subcommand === "dependencies") {
+      if (view === "dependencies") {
         const ghRepo = await githubClient.getRepo(repoInput);
         const deps = await githubClient.getDependencies(repoInput);
         const embed = createDependenciesEmbed(ghRepo, deps);
-        await interaction.editReply({ embeds: [embed] });
+        const components = createRepoNavButtons(owner, repo, "dependencies");
+        await interaction.editReply({ embeds: [embed], components });
         return;
       }
 
-      if (subcommand === "growth") {
+      if (view === "growth") {
         const ghRepo = await githubClient.getRepo(repoInput);
         const growth = await githubClient.getGrowth(repoInput);
         const embed = createRepoGrowthEmbed(ghRepo, growth);
-        await interaction.editReply({ embeds: [embed] });
+        const components = createRepoNavButtons(owner, repo, "growth");
+        await interaction.editReply({ embeds: [embed], components });
         return;
       }
+
+      // Default: Overview Dashboard
+      const ghRepo = await githubClient.getRepo(repoInput);
+      const [commits, prs, issues, releases] = await Promise.all([
+        githubClient.getCommits(repoInput, 30).catch(() => []),
+        githubClient.getPullRequests(repoInput, "all", 30).catch(() => []),
+        githubClient.getIssues(repoInput, "all", 30).catch(() => []),
+        githubClient.getReleases(repoInput, 10).catch(() => []),
+      ]);
+
+      const metrics = computeRepoDashboardMetrics(commits, prs, issues, releases);
+      const embed = createRepoDashboardEmbed(ghRepo, metrics, "overview");
+      const components = createRepoNavButtons(owner, repo, "overview");
+
+      await interaction.editReply({ embeds: [embed], components });
     } catch (err: any) {
       await interaction.editReply({ embeds: [createErrorEmbed(err)] });
     }
