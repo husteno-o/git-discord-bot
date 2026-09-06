@@ -23,9 +23,7 @@ export function createBotClient(options?: { enableMessageContent?: boolean }): C
 
   client.once("ready", (c) => handleReady(c));
   client.on("interactionCreate", (i) => handleInteraction(i));
-  if (allowMessageContent) {
-    client.on("messageCreate", (m) => handleMessageCreate(m));
-  }
+  client.on("messageCreate", (m) => handleMessageCreate(m));
 
   return client;
 }

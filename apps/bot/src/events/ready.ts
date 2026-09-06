@@ -1,7 +1,12 @@
 import { initDatabase } from "@devpulse/database";
 import { logger } from "@devpulse/logger";
 import { type DueReminder, scheduler } from "@devpulse/scheduler";
-import { ActivityType, type Client } from "discord.js";
+import {
+  ActivityType,
+  ApplicationIntegrationType,
+  type Client,
+  InteractionContextType,
+} from "discord.js";
 import { commands } from "../commands/index.js";
 import { BrandColors } from "../ui/colors.js";
 import { createBaseEmbed } from "../ui/embeds.js";
@@ -23,12 +28,31 @@ export async function handleReady(client: Client<true>): Promise<void> {
     status: "online",
   });
 
-  // 3. Register Slash Commands
+  // 3. Register Slash Commands (Supporting Server Installs & User Account Installs)
   try {
-    logger.info("Registering slash commands with Discord REST API...");
-    const commandData = commands.map((c) => c.data);
+    logger.info("Registering slash commands with Discord REST API (Server + User App support)...");
+    const commandData = commands.map((c) => {
+      const data = c.data as any;
+      if (typeof data.setIntegrationTypes === "function") {
+        data.setIntegrationTypes([
+          ApplicationIntegrationType.GuildInstall,
+          ApplicationIntegrationType.UserInstall,
+        ]);
+      }
+      if (typeof data.setContexts === "function") {
+        data.setContexts([
+          InteractionContextType.Guild,
+          InteractionContextType.BotDM,
+          InteractionContextType.PrivateChannel,
+        ]);
+      }
+      return data;
+    });
     await client.application.commands.set(commandData);
-    logger.info({ commandCount: commands.length }, "Slash commands registered successfully");
+    logger.info(
+      { commandCount: commands.length },
+      "Slash commands registered successfully with Server & User App contexts",
+    );
   } catch (err) {
     logger.error({ err }, "Failed to register slash commands");
   }
