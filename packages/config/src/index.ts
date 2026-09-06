@@ -1,4 +1,28 @@
+import fs from "node:fs";
+import path from "node:path";
 import { z } from "zod";
+
+function discoverAndLoadEnv(): void {
+  let curr = process.cwd();
+  for (let i = 0; i < 5; i++) {
+    const candidate = path.join(curr, ".env");
+    if (fs.existsSync(candidate)) {
+      try {
+        if (typeof process.loadEnvFile === "function") {
+          process.loadEnvFile(candidate);
+        }
+      } catch {
+        // Continue if already loaded or permission denied
+      }
+      break;
+    }
+    const parent = path.dirname(curr);
+    if (parent === curr) break;
+    curr = parent;
+  }
+}
+
+discoverAndLoadEnv();
 
 export const ConfigSchema = z.object({
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
@@ -11,6 +35,7 @@ export const ConfigSchema = z.object({
   DISCORD_TOKEN: z.string().min(1).default("dummy-token-for-dev-and-tests"),
   DISCORD_CLIENT_ID: z.string().min(1).default("123456789012345678"),
   DISCORD_PUBLIC_KEY: z.string().optional(),
+  ENABLE_MESSAGE_CONTENT_INTENT: z.coerce.boolean().default(false),
 
   // Turso / libSQL
   TURSO_DATABASE_URL: z.string().default("file:devpulse.db"),

@@ -8,19 +8,24 @@ import { handleInteraction } from "./events/interactionCreate.js";
 import { handleMessageCreate } from "./events/messageCreate.js";
 import { handleReady } from "./events/ready.js";
 
-export function createBotClient(): Client {
+export function createBotClient(options?: { enableMessageContent?: boolean }): Client {
+  const allowMessageContent = options?.enableMessageContent ?? config.ENABLE_MESSAGE_CONTENT_INTENT;
+  const intents = [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages];
+
+  if (allowMessageContent) {
+    intents.push(GatewayIntentBits.MessageContent);
+  }
+
   const client = new Client({
-    intents: [
-      GatewayIntentBits.Guilds,
-      GatewayIntentBits.GuildMessages,
-      GatewayIntentBits.MessageContent,
-    ],
+    intents,
     partials: [Partials.Message, Partials.Channel],
   });
 
   client.once("ready", (c) => handleReady(c));
   client.on("interactionCreate", (i) => handleInteraction(i));
-  client.on("messageCreate", (m) => handleMessageCreate(m));
+  if (allowMessageContent) {
+    client.on("messageCreate", (m) => handleMessageCreate(m));
+  }
 
   return client;
 }
@@ -95,8 +100,29 @@ export async function startUnifiedApp() {
     try {
       logger.info("Connecting to Discord Gateway...");
       await client.login(config.DISCORD_TOKEN);
-    } catch (err) {
-      logger.error({ err }, "Failed to login to Discord Gateway. Check your DISCORD_TOKEN in .env");
+    } catch (err: any) {
+      if (
+        err?.message?.includes("disallowed intents") ||
+        String(err).includes("disallowed intents")
+      ) {
+        logger.warn(
+          "Used disallowed intents: Message Content Intent is not enabled in the Discord Developer Portal.",
+        );
+        logger.warn(
+          "Retrying connection without MessageContent intent (slash commands and UI will function completely)...",
+        );
+        const fallbackClient = createBotClient({ enableMessageContent: false });
+        try {
+          await fallbackClient.login(config.DISCORD_TOKEN);
+        } catch (retryErr) {
+          logger.error({ err: retryErr }, "Failed to login to Discord Gateway after fallback.");
+        }
+      } else {
+        logger.error(
+          { err },
+          "Failed to login to Discord Gateway. Check your DISCORD_TOKEN in .env",
+        );
+      }
     }
   }
 
