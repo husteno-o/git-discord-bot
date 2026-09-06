@@ -17,10 +17,11 @@
     "start:bot": "bun run --filter @devpulse/bot start",
     "start:api": "bun run --filter @devpulse/api start",
     "dev:bot": "bun run --filter @devpulse/bot dev",
-    "dev:api": "bun run --filter @devpulse/api dev",
     "db:generate": "bun run --filter @devpulse/database db:generate",
     "db:migrate": "bun run --filter @devpulse/database db:migrate",
-    "db:push": "bun run --filter @devpulse/database db:push"
+    "db:push": "bun run --filter @devpulse/database db:push",
+    "build:web": "bun run --filter @devpulse/web build",
+    "preview:web": "bun run --filter @devpulse/web preview"
   },
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
