@@ -52,8 +52,10 @@ export const ConfigSchema = z.object({
   GITHUB_REDIRECT_URI: z.string().optional(),
 
   // Optional AI integration
-  AI_PROVIDER: z.enum(["openai", "anthropic", "gemini", "none"]).default("none"),
+  AI_PROVIDER: z.enum(["opencode", "openai", "anthropic", "gemini", "none"]).default("opencode"),
   AI_API_KEY: z.string().optional(),
+  AI_BASE_URL: z.string().default("https://opencode.ai/zen/v1"),
+  AI_MODEL: z.string().default("nemotron-3.5-lightning-free"),
 
   // Security & Rate Limiting
   RATE_LIMIT_USER_MAX: z.coerce.number().int().positive().default(10),

@@ -4,7 +4,17 @@ import type {
   GitHubPullRequestFile,
   GitHubRepo,
 } from "@devpulse/github";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+// Force deterministic heuristic engine in tests (never hit live AI APIs)
+vi.mock("./provider.js", () => ({
+  aiProvider: {
+    name: "Test (Deterministic)",
+    isEnabled: () => false,
+    generateResponse: async () => "{}",
+  },
+}));
+
 import { aiCopilotService } from "./copilot.js";
 
 describe("AI Copilot & Code Intelligence Engine", () => {
