@@ -10,4 +10,5 @@ dist/
 .env.*.local
 *.log
 coverage/
+*.zip
 .DS_Store

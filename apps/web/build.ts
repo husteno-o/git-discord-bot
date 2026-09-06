@@ -38,4 +38,10 @@ if (existsSync(publicDir)) {
   await cp(publicDir, distDir, { recursive: true });
 }
 
+// Generate ready-to-upload zip archive for Cloudflare Pages Direct Upload
+const rootDir = path.resolve(projectRoot, "../..");
+const zipPath = path.join(rootDir, "devpulse-cloudflare-pages.zip");
+Bun.spawnSync(["zip", "-r", "-q", zipPath, "."], { cwd: distDir });
+
 console.log("Landing page build completed successfully in apps/web/dist!");
+console.log(`Cloudflare Pages drag-and-drop zip package created at: ${zipPath}`);
