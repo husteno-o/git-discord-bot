@@ -2,9 +2,19 @@ import { db, users } from "@devpulse/database";
 import { githubClient } from "@devpulse/github";
 import { SlashCommandBuilder } from "discord.js";
 import { eq } from "drizzle-orm";
-import { BrandColors } from "../ui/colors.js";
+import { BrandColors, Macchiato } from "../ui/colors.js";
 import { createBaseEmbed, createErrorEmbed } from "../ui/embeds.js";
 import { NF } from "../ui/icons.js";
+import {
+  ANSI,
+  renderTuiCard,
+  tuiBottomBar,
+  tuiDivider,
+  tuiLine,
+  tuiPrompt,
+  tuiRow2,
+  tuiTopBar,
+} from "../ui/tui.js";
 import type { Command } from "./types.js";
 
 export const activityCommand: Command = {
@@ -46,20 +56,43 @@ export const activityCommand: Command = {
         const data = await githubClient.getDeveloperActivity(username);
 
         const maxCount = Math.max(...data.weekdayDistribution.map((d) => d.count), 1);
-        const histogram = data.weekdayDistribution
-          .map((d) => {
-            const barLen = Math.round((d.count / maxCount) * 12);
-            const bar = "█".repeat(barLen).padEnd(12, "░");
-            return `${d.day} ${bar} ${d.count}`;
-          })
-          .join("\n");
+        const histLines = data.weekdayDistribution.map((d) => {
+          const barLen = Math.round((d.count / maxCount) * 12);
+          const bar = "■".repeat(barLen).padEnd(12, "□");
+          return tuiLine(
+            `${ANSI.dim}${d.day.padEnd(4)}${ANSI.reset} ${ANSI.cyan}${bar}${ANSI.reset} ${ANSI.yellow}${d.count}${ANSI.reset}`,
+          );
+        });
+
+        const tui = renderTuiCard([
+          tuiTopBar("DEVELOPER TELEMETRY"),
+          tuiPrompt(`gitbot activity @${data.user.login}`),
+          tuiDivider("30-DAY METRICS"),
+          tuiRow2(
+            "Commits",
+            `${ANSI.cyan}${data.commitsCount}${ANSI.reset}`,
+            "Reviews",
+            `${ANSI.yellow}${data.reviewsCount}${ANSI.reset}`,
+          ),
+          tuiRow2(
+            "PRs Open",
+            `${ANSI.green}${data.prsOpened}${ANSI.reset}`,
+            "Merged",
+            `${ANSI.magenta}${data.prsMerged}${ANSI.reset}`,
+          ),
+          tuiRow2("Resolved", `${ANSI.green}${data.issuesResolved}${ANSI.reset}`),
+          tuiDivider("WEEKDAY CADENCE"),
+          ...histLines,
+          tuiBottomBar(),
+        ]);
+
+        const badges = `👥 **Developer:** \`@${data.user.login}\`  •  💻 **${data.commitsCount}** Commits  •  🔀 **${data.prsMerged}** PRs Merged\n\n`;
 
         const embed = createBaseEmbed(`${NF.speedometer} Developer Activity: @${data.user.login}`)
           .setThumbnail(data.user.avatarUrl)
+          .setColor(Macchiato.mauve)
           .setURL(data.user.htmlUrl)
-          .setDescription(
-            `**LAST 30 DAYS TELEMETRY**\n\`\`\`text\nCommits:         ${data.commitsCount.toString().padEnd(6)}\nPRs Opened:      ${data.prsOpened.toString().padEnd(6)}\nPRs Merged:      ${data.prsMerged.toString().padEnd(6)}\nReviews:         ${data.reviewsCount.toString().padEnd(6)}\nIssues Resolved: ${data.issuesResolved.toString().padEnd(6)}\n\`\`\`\n**ACTIVITY DISTRIBUTION**\n\`\`\`text\n${histogram}\n\`\`\``,
-          );
+          .setDescription(`${badges}${tui}`);
 
         await interaction.editReply({ embeds: [embed] });
         return;

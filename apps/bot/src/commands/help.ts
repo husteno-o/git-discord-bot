@@ -120,56 +120,55 @@ export function getModuleHelpEmbed(moduleName: string) {
     .setDescription(`${header}${tui}`);
 }
 
+export function createHelpDashboardEmbed() {
+  const tui = renderTuiCard([
+    tuiTopBar("GITBOT CORE ENGINE v2.4"),
+    tuiPrompt("gitbot --help"),
+    tuiDivider("ACTIVE SUBSYSTEMS"),
+    tuiLine(
+      `${ANSI.yellow}[1] REPO   ${ANSI.reset}: ${ANSI.white}/repo <target> [view]${ANSI.reset}`,
+    ),
+    tuiLine(
+      `${ANSI.yellow}[2] PR     ${ANSI.reset}: ${ANSI.white}/pr <view|list|review>${ANSI.reset}`,
+    ),
+    tuiLine(
+      `${ANSI.yellow}[3] SEARCH ${ANSI.reset}: ${ANSI.white}/search <code|issues|prs>${ANSI.reset}`,
+    ),
+    tuiLine(
+      `${ANSI.yellow}[4] CODE   ${ANSI.reset}: ${ANSI.white}/code view, /code blame${ANSI.reset}`,
+    ),
+    tuiLine(`${ANSI.yellow}[5] TRACE  ${ANSI.reset}: ${ANSI.white}/why, /investigate${ANSI.reset}`),
+    tuiLine(`${ANSI.yellow}[6] STATS  ${ANSI.reset}: ${ANSI.white}/activity, /team${ANSI.reset}`),
+    tuiLine(`${ANSI.yellow}[7] RADAR  ${ANSI.reset}: ${ANSI.white}/trending, /watch${ANSI.reset}`),
+    tuiLine(
+      `${ANSI.yellow}[8] CI/CD  ${ANSI.reset}: ${ANSI.white}/actions status, /release${ANSI.reset}`,
+    ),
+    tuiLine(
+      `${ANSI.yellow}[9] SECURE ${ANSI.reset}: ${ANSI.white}/security audit, /connect${ANSI.reset}`,
+    ),
+    tuiDivider("COMMAND CENTER"),
+    tuiLine(`${ANSI.green}▸ Interactive Developer Console for Discord${ANSI.reset}`),
+    tuiLine(`${ANSI.cyan}▸ Pick a manual below or type a command${ANSI.reset}`),
+    tuiBottomBar(),
+  ]);
+
+  const header =
+    `### 🐙 [**GITBOT — GitHub Developer Operating System**](https://github.com/husteno-o/git-discord-bot)\n` +
+    `> *The ultimate Discord command center engineered so developers never have to leave chat for GitHub workflows.*\n\n` +
+    `🌸 **Catppuccin Macchiato**  •  ⚡ **Instant Telemetry**  •  🌿 **PR Power Tools**  •  🛡️ **Zero-Config Security**\n\n`;
+
+  return createBaseEmbed(`${NF.github} GITBOT Developer Center`)
+    .setColor(BrandColors.primary)
+    .setDescription(`${header}${tui}`);
+}
+
 export const helpCommand: Command = {
   data: new SlashCommandBuilder()
     .setName("help")
     .setDescription("Explore GITBOT GitHub Power-User feature sets and command suites"),
 
   async execute(interaction) {
-    const tui = renderTuiCard([
-      tuiTopBar("GITBOT CORE ENGINE v2.4"),
-      tuiPrompt("gitbot --help"),
-      tuiDivider("ACTIVE SUBSYSTEMS"),
-      tuiLine(
-        `${ANSI.yellow}[1] REPO   ${ANSI.reset}: ${ANSI.white}/repo <target> [view]${ANSI.reset}`,
-      ),
-      tuiLine(
-        `${ANSI.yellow}[2] PR     ${ANSI.reset}: ${ANSI.white}/pr <view|list|review>${ANSI.reset}`,
-      ),
-      tuiLine(
-        `${ANSI.yellow}[3] SEARCH ${ANSI.reset}: ${ANSI.white}/search <code|issues|prs>${ANSI.reset}`,
-      ),
-      tuiLine(
-        `${ANSI.yellow}[4] CODE   ${ANSI.reset}: ${ANSI.white}/code view, /code blame${ANSI.reset}`,
-      ),
-      tuiLine(
-        `${ANSI.yellow}[5] TRACE  ${ANSI.reset}: ${ANSI.white}/why, /investigate${ANSI.reset}`,
-      ),
-      tuiLine(`${ANSI.yellow}[6] STATS  ${ANSI.reset}: ${ANSI.white}/activity, /team${ANSI.reset}`),
-      tuiLine(
-        `${ANSI.yellow}[7] RADAR  ${ANSI.reset}: ${ANSI.white}/trending, /watch${ANSI.reset}`,
-      ),
-      tuiLine(
-        `${ANSI.yellow}[8] CI/CD  ${ANSI.reset}: ${ANSI.white}/actions status, /release${ANSI.reset}`,
-      ),
-      tuiLine(
-        `${ANSI.yellow}[9] SECURE ${ANSI.reset}: ${ANSI.white}/security audit, /connect${ANSI.reset}`,
-      ),
-      tuiDivider("COMMAND CENTER"),
-      tuiLine(`${ANSI.green}▸ Interactive Developer Console for Discord${ANSI.reset}`),
-      tuiLine(`${ANSI.cyan}▸ Pick a manual below or type a command${ANSI.reset}`),
-      tuiBottomBar(),
-    ]);
-
-    const header =
-      `### 🐙 [**GITBOT — GitHub Developer Operating System**](https://github.com/husteno-o/git-discord-bot)\n` +
-      `> *The ultimate Discord command center engineered so developers never have to leave chat for GitHub workflows.*\n\n` +
-      `🚀 **Instant Telemetry**  •  🌿 **PR Power Tools**  •  🛡️ **Zero-Config Security**\n\n`;
-
-    const embed = createBaseEmbed(`${NF.github} GITBOT Developer Center`)
-      .setColor(BrandColors.primary)
-      .setDescription(`${header}${tui}`);
-
+    const embed = createHelpDashboardEmbed();
     const components = [createHelpSelect()];
     await interaction.reply({ embeds: [embed], components });
   },

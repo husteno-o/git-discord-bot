@@ -4,14 +4,13 @@ import { logger } from "@devpulse/logger";
 import { scanForSecrets } from "@devpulse/security";
 import type { Message } from "discord.js";
 import { eq } from "drizzle-orm";
-import { BrandColors } from "../ui/colors.js";
+import { createHelpDashboardEmbed } from "../commands/help.js";
 import {
   createDeleteSecretButton,
   createHelpSelect,
   createRepoNavButtons,
 } from "../ui/components.js";
 import {
-  createBaseEmbed,
   createErrorEmbed,
   createRepoDashboardEmbed,
   createSecurityAlertEmbed,
@@ -68,11 +67,7 @@ export async function handleMessageCreate(message: Message): Promise<void> {
 
   // 2. Text Command: /help or !help
   if (content === "/help" || content === "!help" || content === "help") {
-    const embed = createBaseEmbed(`${NF.github} GITBOT — Developer Operating System`)
-      .setColor(BrandColors.primary)
-      .setDescription(
-        `Welcome to **GITBOT**, your terminal command center for GitHub inside Discord.\n\n**Quick Commands:**\n• \`/repo <owner/repo>\` ${NF.arrowRight} Telemetry, health & velocity (e.g. \`/repo swadhinbiswas/warren\`)\n• \`/pr <repo> <number>\` ${NF.arrowRight} Pull request reviews, diffs & 1-click merge\n• \`/actions <repo>\` ${NF.arrowRight} CI/CD workflow tree & run status\n• \`/trending\` ${NF.arrowRight} Rising GitHub repositories across languages\n• \`/tools\` ${NF.arrowRight} Developer utility console (Base64, JWT, Hash, Cron)\n\nUse the menu below to explore all feature areas:`,
-      );
+    const embed = createHelpDashboardEmbed();
     const components = [createHelpSelect()];
     await message.reply({ embeds: [embed], components });
     return;

@@ -6,15 +6,30 @@ export const TUI_WIDTH = 43;
 export const ANSI = {
   reset: "\x1b[0m",
   bold: "\x1b[1m",
-  dim: "\x1b[2;37m",
-  red: "\x1b[1;31m",
-  green: "\x1b[1;32m",
-  yellow: "\x1b[1;33m",
-  blue: "\x1b[1;34m",
-  magenta: "\x1b[1;35m",
-  cyan: "\x1b[1;36m",
-  white: "\x1b[1;37m",
-  gray: "\x1b[0;30m",
+  dim: "\x1b[2;37m", // Macchiato Subtext0 (#a5adcb)
+  red: "\x1b[1;31m", // Macchiato Red (#ed8796)
+  green: "\x1b[1;32m", // Macchiato Green (#a6da95)
+  yellow: "\x1b[1;33m", // Macchiato Peach/Yellow (#eed49f)
+  blue: "\x1b[1;34m", // Macchiato Blue (#8aadf4)
+  magenta: "\x1b[1;35m", // Macchiato Mauve (#c6a0f6)
+  cyan: "\x1b[1;36m", // Macchiato Teal (#8bd5ca)
+  white: "\x1b[1;37m", // Macchiato Text (#cad3f5)
+  gray: "\x1b[0;30m", // Macchiato Surface0 (#363a4f)
+} as const;
+
+export const MacchiatoAnsi = {
+  mauve: ANSI.magenta,
+  teal: ANSI.cyan,
+  green: ANSI.green,
+  peach: ANSI.yellow,
+  yellow: ANSI.yellow,
+  red: ANSI.red,
+  blue: ANSI.blue,
+  text: ANSI.white,
+  subtext: ANSI.dim,
+  surface: ANSI.gray,
+  reset: ANSI.reset,
+  bold: ANSI.bold,
 } as const;
 
 const ANSI_REGEX = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g");
@@ -44,7 +59,7 @@ export function clipAnsi(str: string, maxLen: number): string {
 }
 
 export function tuiTopBar(title: string, width = TUI_WIDTH): string {
-  const innerTitle = `${ANSI.cyan}┌─ [ ${ANSI.green}${title}${ANSI.cyan} ] ${ANSI.reset}`;
+  const innerTitle = `${ANSI.cyan}┌─ [ ${ANSI.magenta}${title}${ANSI.cyan} ] ${ANSI.reset}`;
   const rem = width - visibleLength(innerTitle) - 1;
   return `${innerTitle}${ANSI.cyan}${"─".repeat(Math.max(0, rem))}┐${ANSI.reset}`;
 }
@@ -69,7 +84,7 @@ export function tuiLine(text = "", width = TUI_WIDTH): string {
 }
 
 export function tuiPrompt(cmd: string, width = TUI_WIDTH): string {
-  return tuiLine(`${ANSI.white}$ ${cmd}${ANSI.reset}`, width);
+  return tuiLine(`${ANSI.cyan}$${ANSI.reset} ${ANSI.white}${cmd}${ANSI.reset}`, width);
 }
 
 export function tuiRow2(

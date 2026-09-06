@@ -18,7 +18,7 @@ import type {
 } from "@devpulse/github";
 import type { DetectedSecret } from "@devpulse/security";
 import { EmbedBuilder } from "discord.js";
-import { BrandColors } from "./colors.js";
+import { Macchiato } from "./colors.js";
 import { NF } from "./icons.js";
 import {
   ANSI,
@@ -36,10 +36,10 @@ import {
 
 export function createBaseEmbed(title: string, description?: string): EmbedBuilder {
   const embed = new EmbedBuilder()
-    .setColor(BrandColors.primary)
+    .setColor(Macchiato.mauve)
     .setTitle(title)
     .setFooter({
-      text: "GITBOT v2.4.0 • Interactive Terminal Console",
+      text: "GITBOT v2.4.0 • Catppuccin Macchiato TUI",
       iconURL: "https://github.githubassets.com/favicons/favicon.png",
     })
     .setTimestamp();
@@ -64,10 +64,10 @@ export function createErrorEmbed(error: Error | string): EmbedBuilder {
   ]);
 
   return new EmbedBuilder()
-    .setColor(BrandColors.danger)
+    .setColor(Macchiato.red)
     .setTitle(`${NF.cross} Execution Error`)
     .setDescription(tui)
-    .setFooter({ text: "GITBOT Error Console" })
+    .setFooter({ text: "GITBOT Error Console • Catppuccin Macchiato" })
     .setTimestamp();
 }
 
@@ -130,16 +130,19 @@ export function createRepoDashboardEmbed(
     ),
     tuiDivider("HEALTH INDEX"),
     tuiLine(
-      `${ANSI.dim}Health :${ANSI.reset} ${renderMeter(healthScore)} ${ANSI.green}${healthScore}/100${ANSI.reset}`,
+      `${ANSI.dim}Health :${ANSI.reset} ${renderMeter(healthScore)} ${healthScore >= 80 ? ANSI.green : ANSI.yellow}${healthScore}/100${ANSI.reset}`,
     ),
     tuiBottomBar(),
   ]);
 
   const descQuote = repo.description ? `> *${repo.description.replace(/\n/g, " ")}*\n\n` : "";
-  const badges = `⭐ **${repo.stars.toLocaleString()}** Stars  •  🍴 **${repo.forks.toLocaleString()}** Forks  •  ${repo.isPrivate ? "🔴 **Private**" : "🟢 **Public**"}  •  🏷️ **${repo.license?.spdxId || "No License"}**\n\n`;
+  const badges = `⭐ **${repo.stars.toLocaleString()}** Stars  •  🍴 **${repo.forks.toLocaleString()}** Forks  •  ${repo.isPrivate ? "🔒 **Private**" : "🌐 **Public**"}  •  📜 \`${repo.license?.spdxId || "No License"}\`\n\n`;
+
+  const embedColor =
+    healthScore >= 80 ? Macchiato.green : healthScore >= 50 ? Macchiato.peach : Macchiato.red;
 
   return new EmbedBuilder()
-    .setColor(healthScore >= 80 ? BrandColors.success : BrandColors.warning)
+    .setColor(embedColor)
     .setTitle(`${NF.github} ${repo.fullName}`)
     .setAuthor({
       name: `GITBOT Terminal • ${repo.fullName}`,
@@ -149,7 +152,7 @@ export function createRepoDashboardEmbed(
     .setURL(repo.htmlUrl)
     .setDescription(`${descQuote}${badges}${tui}`)
     .setFooter({
-      text: "GITBOT v2.4.0 • Interactive Terminal Console • Press buttons below to navigate",
+      text: "GITBOT v2.4.0 • Catppuccin Macchiato TUI • Press buttons below to navigate",
       iconURL: "https://github.githubassets.com/favicons/favicon.png",
     })
     .setTimestamp();
@@ -157,7 +160,7 @@ export function createRepoDashboardEmbed(
 
 export function createRepoHealthEmbed(repo: GitHubRepo, health: RepoHealthScore): EmbedBuilder {
   const tui = renderTuiCard([
-    tuiTopBar(`HEALTH SCORE: ${health.overallScore}/100`),
+    tuiTopBar(`HEALTH: ${health.overallScore}/100`),
     tuiPrompt(`gitbot repo ${repo.fullName} --health`),
     tuiDivider("METRIC GAUGES"),
     tuiLine(
@@ -193,7 +196,14 @@ export function createRepoHealthEmbed(repo: GitHubRepo, health: RepoHealthScore)
     tuiBottomBar(),
   ]);
 
-  const badges = `❤️ **Score:** \`${health.overallScore}/100\`  •  ${health.overallScore >= 80 ? "🟢 **Healthy**" : "🟡 **Needs Maintenance**"}  •  📜 **${health.details.commits30d}** Commits (30d)\n\n`;
+  const badges = `❤️ **Health Score:** \`${health.overallScore}/100\`  •  ${health.overallScore >= 80 ? "🟢 **Healthy**" : "🟡 **Needs Maintenance**"}  •  📜 **${health.details.commits30d}** Commits (30d)\n\n`;
+
+  const embedColor =
+    health.overallScore >= 80
+      ? Macchiato.green
+      : health.overallScore >= 50
+        ? Macchiato.peach
+        : Macchiato.red;
 
   return createBaseEmbed(`${NF.heart} Health Score: ${repo.fullName}`)
     .setAuthor({
@@ -202,7 +212,7 @@ export function createRepoHealthEmbed(repo: GitHubRepo, health: RepoHealthScore)
       url: repo.htmlUrl,
     })
     .setURL(repo.htmlUrl)
-    .setColor(health.overallScore > 80 ? BrandColors.success : BrandColors.warning)
+    .setColor(embedColor)
     .setDescription(`${badges}${tui}`);
 }
 
@@ -234,7 +244,7 @@ export function createRepoGrowthEmbed(repo: GitHubRepo, growth: RepoGrowthMetric
       iconURL: repo.owner.avatarUrl,
       url: repo.htmlUrl,
     })
-    .setColor(BrandColors.primary)
+    .setColor(Macchiato.lavender)
     .setURL(repo.htmlUrl)
     .setDescription(`${badges}${tui}`);
 }
@@ -266,7 +276,7 @@ export function createDependenciesEmbed(repo: GitHubRepo, deps: RepoDependencies
     tuiBottomBar(),
   ]);
 
-  const badges = `📦 **Packages:** \`${deps.totalCount}\`  •  ${deps.outdatedCount > 0 ? `⚠️ **${deps.outdatedCount}** Outdated` : "🟢 **All Up to Date**"}  •  📄 **${deps.manifestFile}**\n\n`;
+  const badges = `📦 **Packages:** \`${deps.totalCount}\`  •  ${deps.outdatedCount > 0 ? `⚠️ **${deps.outdatedCount}** Outdated` : "🟢 **All Up to Date**"}  •  📄 \`${deps.manifestFile}\`\n\n`;
 
   return createBaseEmbed(`${NF.network} Dependencies: ${repo.fullName}`)
     .setAuthor({
@@ -274,6 +284,7 @@ export function createDependenciesEmbed(repo: GitHubRepo, deps: RepoDependencies
       iconURL: repo.owner.avatarUrl,
       url: repo.htmlUrl,
     })
+    .setColor(deps.outdatedCount > 0 ? Macchiato.peach : Macchiato.teal)
     .setURL(repo.htmlUrl)
     .setDescription(`${badges}${tui}`);
 }
@@ -325,11 +336,19 @@ export function createDetailedPrEmbed(
     tuiBottomBar(),
   ]);
 
-  const badges = `${isReady ? "🟢 **Ready to Merge**" : pr.draft ? "⚪ **Draft**" : "🟡 **In Review**"}  •  🌿 \`${pr.headBranch}\` ➔ \`${pr.baseBranch}\`  •  👤 **@${pr.author.login}**\n\n`;
+  const badges = `${isReady ? "🟢 **Ready to Merge**" : pr.draft ? "⚪ **Draft**" : !pr.mergeable ? "🔴 **Conflicts**" : "🟡 **In Review**"}  •  🌿 \`${pr.headBranch}\` ➔ \`${pr.baseBranch}\`  •  👤 **@${pr.author.login}**\n\n`;
+
+  const prColor = pr.draft
+    ? Macchiato.overlay1
+    : !pr.mergeable
+      ? Macchiato.red
+      : isReady
+        ? Macchiato.green
+        : Macchiato.peach;
 
   const embed = createBaseEmbed(`${NF.gitPullRequest} PR #${pr.number}: ${pr.title}`)
     .setURL(pr.htmlUrl)
-    .setColor(isReady ? BrandColors.success : BrandColors.warning)
+    .setColor(prColor)
     .setDescription(`${badges}${tui}`);
 
   const warnings: string[] = [];
@@ -366,9 +385,9 @@ export function createInvestigationEmbed(investigation: InvestigationTimeline): 
     .join("\n");
 
   return createBaseEmbed(`${NF.search} ${investigation.title}`)
-    .setColor(BrandColors.primary)
+    .setColor(Macchiato.sapphire)
     .setDescription(
-      `**Target:** \`${investigation.identifier}\`\n**Summary:** ${investigation.summary}\n\n**Lifecycle Traceability Timeline:**\n\n${steps}`,
+      `🔍 **Target:** \`${investigation.identifier}\`\n> *${investigation.summary}*\n\n**Lifecycle Traceability Timeline:**\n\n${steps}`,
     );
 }
 
@@ -377,6 +396,7 @@ export function createCodeViewEmbed(repo: string, file: GitHubFileContent): Embe
   const snippet = file.content.split("\n").slice(0, 15).join("\n");
   const embed = createBaseEmbed(`${NF.terminal} ${repo}: ${file.path}`)
     .setURL(file.htmlUrl)
+    .setColor(Macchiato.blue)
     .setDescription(
       `**Size:** \`${formatBytes(file.size)}\` | **SHA:** \`${file.sha.slice(0, 7)}\`\n\`\`\`${file.path.split(".").pop() || ""}\n${snippet}\n\`\`\``,
     );
@@ -393,15 +413,15 @@ export function createCodeViewEmbed(repo: string, file: GitHubFileContent): Embe
 }
 
 export function createBlameEmbed(repo: string, path: string, blame: GitHubBlameLine): EmbedBuilder {
-  return createBaseEmbed(
-    `${NF.gitCommit} Blame: ${repo}/${path} (Line ${blame.lineNumber})`,
-  ).setDescription(
-    `\`\`\`text\n${blame.code}\n\`\`\`\n` +
-      `**Last Changed:** ${blame.relatedPrNumber ? `**PR #${blame.relatedPrNumber}**` : `Commit \`${blame.commitSha}\``}\n` +
-      `**Author:** @${blame.commitAuthor}\n` +
-      `**Commit:** \`${blame.commitSha}\`\n` +
-      `**Reason:** "${blame.commitMessage}"`,
-  );
+  return createBaseEmbed(`${NF.gitCommit} Blame: ${repo}/${path} (Line ${blame.lineNumber})`)
+    .setColor(Macchiato.mauve)
+    .setDescription(
+      `\`\`\`text\n${blame.code}\n\`\`\`\n` +
+        `**Last Changed:** ${blame.relatedPrNumber ? `**PR #${blame.relatedPrNumber}**` : `Commit \`${blame.commitSha}\``}\n` +
+        `**Author:** @${blame.commitAuthor}\n` +
+        `**Commit:** \`${blame.commitSha}\`\n` +
+        `**Reason:** "${blame.commitMessage}"`,
+    );
 }
 
 // 5. ACTIONS TREE EMBED
@@ -414,9 +434,11 @@ export function createActionsTreeEmbed(repo: string, runs: any[]): EmbedBuilder 
     return `${prefix} ${padAnsi(clipAnsi(r.name, 16), 16)} ${statusIcon} (${r.headBranch})`;
   });
 
-  return createBaseEmbed(`${NF.robot} GitHub Actions: ${repo}`).setDescription(
-    `Workflow runs on default branch:\n\`\`\`text\nmain\n${lines.join("\n") || "└── No workflow runs found"}\n\`\`\``,
-  );
+  return createBaseEmbed(`${NF.robot} GitHub Actions: ${repo}`)
+    .setColor(Macchiato.teal)
+    .setDescription(
+      `Workflow runs on default branch:\n\`\`\`text\nmain\n${lines.join("\n") || "└── No workflow runs found"}\n\`\`\``,
+    );
 }
 
 // 6. SECURITY EMBED
@@ -439,18 +461,16 @@ export function createSecurityAuditEmbed(
     .join("\n\n");
 
   return createBaseEmbed(`${NF.shield} GitHub Security Center: ${repo}`)
-    .setColor(
-      critical > 0 ? BrandColors.danger : high > 0 ? BrandColors.warning : BrandColors.success,
-    )
+    .setColor(critical > 0 ? Macchiato.red : high > 0 ? Macchiato.peach : Macchiato.green)
     .setDescription(
-      `**Advisories Breakdown:**\nCritical: \`${critical}\` | High: \`${high}\` | Medium: \`${medium}\` | Low: \`${low}\`\n\n${topItems || `${NF.check} Zero active vulnerabilities detected!`}`,
+      `🛡️ **Advisories Breakdown:**\nCritical: \`${critical}\` | High: \`${high}\` | Medium: \`${medium}\` | Low: \`${low}\`\n\n${topItems || `${NF.check} Zero active vulnerabilities detected!`}`,
     );
 }
 
 // 7. RELEASE NOTES EMBED
 export function createReleaseNotesEmbed(repo: string, notes: any): EmbedBuilder {
   const embed = createBaseEmbed(`${NF.gitTag} Release Notes: ${repo} (${notes.version})`).setColor(
-    BrandColors.primary,
+    Macchiato.yellow,
   );
 
   if (notes.breaking && notes.breaking.length > 0) {
@@ -516,7 +536,7 @@ export function createHomeDashboardEmbed(
   ]);
 
   return createBaseEmbed(`${NF.github} GITBOT Developer Center — @${username}`)
-    .setColor(BrandColors.primary)
+    .setColor(Macchiato.mauve)
     .setDescription(
       `${tui}\n\n**${NF.warning} NEEDS ATTENTION**\n${attentionItems.join("\n") || `${NF.check} No urgent bottlenecks or failing builds!`}\n\n**${NF.gitTag} RELEASES**\n${latestReleases.join("\n") || "No new releases in followed repositories."}\n\n**${NF.flame} TRENDING ON GITHUB**\n${trendingRepos.join("\n") || "Check /trending for top rising projects."}`,
     );
@@ -548,7 +568,7 @@ export function createConnectStatusEmbed(
   ]);
 
   return createBaseEmbed(`${NF.github} Authentication Center`)
-    .setColor(isConn ? BrandColors.success : BrandColors.secondary)
+    .setColor(isConn ? Macchiato.green : Macchiato.surface1)
     .setDescription(`${tui}\n\n*Credentials are encrypted at rest with AES-256-GCM.*`);
 }
 
@@ -591,6 +611,7 @@ export function createRepoCommitsEmbed(repo: GitHubRepo, commits: GitHubCommit[]
       iconURL: repo.owner.avatarUrl,
       url: repo.htmlUrl,
     })
+    .setColor(Macchiato.sapphire)
     .setURL(repo.htmlUrl)
     .setDescription(`${tui}\n\n**📜 Direct Commit Links:**\n${markdownLinks || "None"}`);
 }
@@ -623,6 +644,7 @@ export function createRepoPrsEmbed(repo: GitHubRepo, prs: GitHubPullRequest[]): 
       iconURL: repo.owner.avatarUrl,
       url: repo.htmlUrl,
     })
+    .setColor(Macchiato.teal)
     .setURL(repo.htmlUrl)
     .setDescription(`${tui}\n\n**🔀 Direct PR Links:**\n${markdownLinks || "None"}`);
 }
@@ -655,6 +677,7 @@ export function createRepoIssuesEmbed(repo: GitHubRepo, issues: GitHubIssue[]): 
       iconURL: repo.owner.avatarUrl,
       url: repo.htmlUrl,
     })
+    .setColor(Macchiato.peach)
     .setURL(repo.htmlUrl)
     .setDescription(`${tui}\n\n**🐞 Direct Issue Links:**\n${markdownLinks || "None"}`);
 }
@@ -688,13 +711,14 @@ export function createRepoReleasesEmbed(repo: GitHubRepo, releases: GitHubReleas
       iconURL: repo.owner.avatarUrl,
       url: repo.htmlUrl,
     })
+    .setColor(Macchiato.yellow)
     .setURL(repo.htmlUrl)
     .setDescription(`${tui}\n\n**🏷️ Direct Release Links:**\n${markdownLinks || "None"}`);
 }
 
 export function createSecurityAlertEmbed(secret: DetectedSecret): EmbedBuilder {
   return createBaseEmbed(`${NF.shield} Sensitive Credential Detected`)
-    .setColor(BrandColors.danger)
+    .setColor(Macchiato.red)
     .setDescription(
       `A credential pattern matching **${secret.type}** was detected.\n\n**Fingerprint:** \`${secret.fingerprintHash.slice(0, 16)}...\`\n${NF.warning} **Action Required:** Revoke this credential immediately and delete the message below.`,
     );
