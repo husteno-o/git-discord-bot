@@ -1,0 +1,28 @@
+{
+  "name": "devpulse",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "build": "bun run --filter '*' build",
+    "typecheck": "bun run --filter '*' typecheck",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "start:bot": "bun run --filter @devpulse/bot start",
+    "start:api": "bun run --filter @devpulse/api start",
+    "dev:bot": "bun run --filter @devpulse/bot dev",
+    "dev:api": "bun run --filter @devpulse/api dev",
+    "db:generate": "bun run --filter @devpulse/database db:generate",
+    "db:migrate": "bun run --filter @devpulse/database db:migrate",
+    "db:push": "bun run --filter @devpulse/database db:push"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "1.9.4",
+    "@types/node": "^22.13.0",
+    "bun-types": "^1.4.2",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.5"
+  }
+}
