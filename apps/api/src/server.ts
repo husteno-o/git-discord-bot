@@ -5,18 +5,37 @@ import { logger } from "@devpulse/logger";
 import { sql } from "drizzle-orm";
 import Fastify, { type FastifyInstance } from "fastify";
 
-export function buildServer(): FastifyInstance {
+export interface ServerOptions {
+  discordClient?: {
+    isReady?: () => boolean;
+    ws?: { ping?: number };
+    guilds?: { cache?: { size: number } };
+    user?: { tag?: string } | null;
+  };
+}
+
+export function buildServer(options?: ServerOptions): FastifyInstance {
   const server = Fastify({
     loggerInstance: logger as any,
   });
 
   server.get("/health", async () => {
     const memory = process.memoryUsage();
+    const discordStatus = options?.discordClient
+      ? {
+          connected: options.discordClient.isReady ? options.discordClient.isReady() : false,
+          pingMs: options.discordClient.ws?.ping ?? -1,
+          guildsCount: options.discordClient.guilds?.cache?.size ?? 0,
+          user: options.discordClient.user?.tag ?? null,
+        }
+      : undefined;
+
     return {
       status: "healthy",
       service: "DevPulse API",
       uptimeSeconds: Math.floor(process.uptime()),
       timestamp: new Date().toISOString(),
+      ...(discordStatus ? { discord: discordStatus } : {}),
       memory: {
         rss: formatBytes(memory.rss),
         heapUsed: formatBytes(memory.heapUsed),
@@ -41,6 +60,9 @@ export function buildServer(): FastifyInstance {
         status: "ready",
         database: "connected",
         cache: "connected",
+        ...(options?.discordClient
+          ? { discord: options.discordClient.isReady?.() ? "connected" : "connecting" }
+          : {}),
         timestamp: new Date().toISOString(),
       };
     } catch (err: any) {
@@ -62,6 +84,9 @@ export function buildServer(): FastifyInstance {
       repositoriesTracked: allRepos.length,
       monitorsActive: allMonitors.filter((m) => m.isActive).length,
       monitorsTotal: allMonitors.length,
+      ...(options?.discordClient?.guilds?.cache
+        ? { discordGuilds: options.discordClient.guilds.cache.size }
+        : {}),
       nodeVersion: process.version,
       platform: process.platform,
     };

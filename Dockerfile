@@ -27,4 +27,4 @@ ENV HOST=0.0.0.0
 
 EXPOSE 3000
 
-CMD ["bun", "run", "start:bot"]
+CMD ["bun", "run", "start"]

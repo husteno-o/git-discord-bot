@@ -1,20 +1,9 @@
 services:
-  devpulse-bot:
+  devpulse:
     build:
       context: .
       dockerfile: Dockerfile
-    command: ["bun", "run", "start:bot"]
-    restart: unless-stopped
-    env_file:
-      - .env
-    volumes:
-      - devpulse-data:/app/data
-
-  devpulse-api:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    command: ["bun", "run", "start:api"]
+    command: ["bun", "run", "start"]
     restart: unless-stopped
     ports:
       - "3000:3000"

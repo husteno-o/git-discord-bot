@@ -13,6 +13,7 @@
   "dependencies": {
     "@devpulse/ai": "workspace:*",
     "@devpulse/analytics": "workspace:*",
+    "@devpulse/api": "workspace:*",
     "@devpulse/cache": "workspace:*",
     "@devpulse/config": "workspace:*",
     "@devpulse/core": "workspace:*",
