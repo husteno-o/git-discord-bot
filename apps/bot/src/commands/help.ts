@@ -4,6 +4,7 @@ import { createHelpSelect } from "../ui/components.js";
 import { createBaseEmbed } from "../ui/embeds.js";
 import { NF } from "../ui/icons.js";
 import {
+  ANSI,
   renderTuiCard,
   tuiBottomBar,
   tuiDivider,
@@ -17,7 +18,7 @@ export function getModuleHelpEmbed(moduleName: string) {
   const map: Record<string, { title: string; synopsis: string; commands: [string, string][] }> = {
     repo: {
       title: "REPO INTELLIGENCE",
-      synopsis: "Deep repository metrics, health score & dependencies",
+      synopsis: "Deep repository metrics, health scores, and dependencies",
       commands: [
         ["/repo <repo>", "Master telemetry dashboard"],
         ["/repo <repo> view:health", "Health breakdown & audit"],
@@ -98,21 +99,25 @@ export function getModuleHelpEmbed(moduleName: string) {
     tuiTopBar(`MAN: ${info.title}`),
     tuiPrompt(`gitbot man ${moduleName}`),
     tuiDivider("SYNOPSIS"),
-    tuiLine(info.synopsis),
+    tuiLine(`${ANSI.green}${info.synopsis}${ANSI.reset}`),
     tuiDivider("COMMAND SUITE"),
   ];
 
   for (const [cmd, desc] of info.commands) {
-    tuiLines.push(tuiLine(cmd));
-    tuiLines.push(tuiLine(`  ▸ ${desc}`));
+    tuiLines.push(tuiLine(`${ANSI.white}${cmd}${ANSI.reset}`));
+    tuiLines.push(tuiLine(`  ${ANSI.cyan}▸${ANSI.reset} ${ANSI.dim}${desc}${ANSI.reset}`));
   }
 
   tuiLines.push(tuiBottomBar());
   const tui = renderTuiCard(tuiLines);
 
+  const header =
+    `### 💻 [**Manual: ${info.title}**](https://github.com/husteno-o/git-discord-bot)\n` +
+    `> *${info.synopsis}*\n\n`;
+
   return createBaseEmbed(`${NF.terminal} Manual: ${info.title}`)
     .setColor(BrandColors.primary)
-    .setDescription(tui);
+    .setDescription(`${header}${tui}`);
 }
 
 export const helpCommand: Command = {
@@ -122,27 +127,48 @@ export const helpCommand: Command = {
 
   async execute(interaction) {
     const tui = renderTuiCard([
-      tuiTopBar("GITBOT TERMINAL v2.4.0"),
+      tuiTopBar("GITBOT CORE ENGINE v2.4"),
       tuiPrompt("gitbot --help"),
       tuiDivider("ACTIVE SUBSYSTEMS"),
-      tuiLine("[1] REPO    : /repo <target> [view]"),
-      tuiLine("[2] PR      : /pr <view|list|review>"),
-      tuiLine("[3] SEARCH  : /search <code|issues|prs>"),
-      tuiLine("[4] CODE    : /code view, /code blame"),
-      tuiLine("[5] TRACE   : /why, /investigate"),
-      tuiLine("[6] METRICS : /activity, /team"),
-      tuiLine("[7] RADAR   : /trending, /watch"),
-      tuiLine("[8] CI/CD   : /actions status, /release"),
-      tuiLine("[9] SECURE  : /security audit, /connect"),
+      tuiLine(
+        `${ANSI.yellow}[1] REPO   ${ANSI.reset}: ${ANSI.white}/repo <target> [view]${ANSI.reset}`,
+      ),
+      tuiLine(
+        `${ANSI.yellow}[2] PR     ${ANSI.reset}: ${ANSI.white}/pr <view|list|review>${ANSI.reset}`,
+      ),
+      tuiLine(
+        `${ANSI.yellow}[3] SEARCH ${ANSI.reset}: ${ANSI.white}/search <code|issues|prs>${ANSI.reset}`,
+      ),
+      tuiLine(
+        `${ANSI.yellow}[4] CODE   ${ANSI.reset}: ${ANSI.white}/code view, /code blame${ANSI.reset}`,
+      ),
+      tuiLine(
+        `${ANSI.yellow}[5] TRACE  ${ANSI.reset}: ${ANSI.white}/why, /investigate${ANSI.reset}`,
+      ),
+      tuiLine(`${ANSI.yellow}[6] STATS  ${ANSI.reset}: ${ANSI.white}/activity, /team${ANSI.reset}`),
+      tuiLine(
+        `${ANSI.yellow}[7] RADAR  ${ANSI.reset}: ${ANSI.white}/trending, /watch${ANSI.reset}`,
+      ),
+      tuiLine(
+        `${ANSI.yellow}[8] CI/CD  ${ANSI.reset}: ${ANSI.white}/actions status, /release${ANSI.reset}`,
+      ),
+      tuiLine(
+        `${ANSI.yellow}[9] SECURE ${ANSI.reset}: ${ANSI.white}/security audit, /connect${ANSI.reset}`,
+      ),
       tuiDivider("COMMAND CENTER"),
-      tuiLine("▸ Terminal CLI engineered for Discord"),
-      tuiLine("▸ Select a manual below or run command"),
+      tuiLine(`${ANSI.green}▸ Interactive Developer Console for Discord${ANSI.reset}`),
+      tuiLine(`${ANSI.cyan}▸ Pick a manual below or type a command${ANSI.reset}`),
       tuiBottomBar(),
     ]);
 
+    const header =
+      `### 🐙 [**GITBOT — GitHub Developer Operating System**](https://github.com/husteno-o/git-discord-bot)\n` +
+      `> *The ultimate Discord command center engineered so developers never have to leave chat for GitHub workflows.*\n\n` +
+      `🚀 **Instant Telemetry**  •  🌿 **PR Power Tools**  •  🛡️ **Zero-Config Security**\n\n`;
+
     const embed = createBaseEmbed(`${NF.github} GITBOT Developer Center`)
       .setColor(BrandColors.primary)
-      .setDescription(tui);
+      .setDescription(`${header}${tui}`);
 
     const components = [createHelpSelect()];
     await interaction.reply({ embeds: [embed], components });

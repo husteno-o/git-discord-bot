@@ -1,41 +1,75 @@
-// Terminal User Interface (TUI) Rendering Engine for GITBOT
-// Strict fixed-width monospace containers guaranteed to render without line-wrapping across Discord Desktop, Web, iOS, and Android.
+// Terminal User Interface (TUI) Colorful ANSI Rendering Engine for GITBOT
+// Strict fixed-width (43-column) monospace containers with rich Discord ANSI colors.
 
 export const TUI_WIDTH = 43;
 
-export function padText(str: string, len: number): string {
-  if (str.length > len) {
-    return str.slice(0, len);
+export const ANSI = {
+  reset: "\x1b[0m",
+  bold: "\x1b[1m",
+  dim: "\x1b[2;37m",
+  red: "\x1b[1;31m",
+  green: "\x1b[1;32m",
+  yellow: "\x1b[1;33m",
+  blue: "\x1b[1;34m",
+  magenta: "\x1b[1;35m",
+  cyan: "\x1b[1;36m",
+  white: "\x1b[1;37m",
+  gray: "\x1b[0;30m",
+} as const;
+
+const ANSI_REGEX = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g");
+
+export function stripAnsi(str: string): string {
+  return str.replace(ANSI_REGEX, "");
+}
+
+export function visibleLength(str: string): number {
+  return stripAnsi(str).length;
+}
+
+export function padAnsi(str: string, targetLen: number): string {
+  const visLen = visibleLength(str);
+  if (visLen >= targetLen) {
+    return str;
   }
-  return str + " ".repeat(len - str.length);
+  return `${str}${" ".repeat(targetLen - visLen)}`;
+}
+
+export function clipAnsi(str: string, maxLen: number): string {
+  if (visibleLength(str) <= maxLen) {
+    return str;
+  }
+  const stripped = stripAnsi(str);
+  return `${stripped.slice(0, maxLen - 1)}…`;
 }
 
 export function tuiTopBar(title: string, width = TUI_WIDTH): string {
-  const prefix = `┌─ [ ${title} ] `;
-  const rem = Math.max(0, width - prefix.length - 1);
-  return `${prefix}${"─".repeat(rem)}┐`;
+  const innerTitle = `${ANSI.cyan}┌─ [ ${ANSI.green}${title}${ANSI.cyan} ] ${ANSI.reset}`;
+  const rem = width - visibleLength(innerTitle) - 1;
+  return `${innerTitle}${ANSI.cyan}${"─".repeat(Math.max(0, rem))}┐${ANSI.reset}`;
 }
 
 export function tuiBottomBar(width = TUI_WIDTH): string {
-  return `└${"─".repeat(width - 2)}┘`;
+  return `${ANSI.cyan}└${"─".repeat(width - 2)}┘${ANSI.reset}`;
 }
 
 export function tuiDivider(title?: string, width = TUI_WIDTH): string {
   if (!title) {
-    return `├${"─".repeat(width - 2)}┤`;
+    return `${ANSI.cyan}├${"─".repeat(width - 2)}┤${ANSI.reset}`;
   }
-  const prefix = `├─ ${title} `;
-  const rem = Math.max(0, width - prefix.length - 1);
-  return `${prefix}${"─".repeat(rem)}┤`;
+  const prefix = `${ANSI.cyan}├─ ${ANSI.yellow}${title} ${ANSI.cyan}`;
+  const rem = width - visibleLength(prefix) - 1;
+  return `${prefix}${"─".repeat(Math.max(0, rem))}┤${ANSI.reset}`;
 }
 
 export function tuiLine(text = "", width = TUI_WIDTH): string {
   const contentWidth = width - 4;
-  return `│ ${padText(text, contentWidth)} │`;
+  const clipped = clipAnsi(text, contentWidth);
+  return `${ANSI.cyan}│${ANSI.reset} ${padAnsi(clipped, contentWidth)} ${ANSI.cyan}│${ANSI.reset}`;
 }
 
 export function tuiPrompt(cmd: string, width = TUI_WIDTH): string {
-  return tuiLine(`$ ${cmd}`, width);
+  return tuiLine(`${ANSI.white}$ ${cmd}${ANSI.reset}`, width);
 }
 
 export function tuiRow2(
@@ -47,19 +81,21 @@ export function tuiRow2(
 ): string {
   const contentWidth = width - 4;
   if (!l2) {
-    return tuiLine(`${l1.padEnd(10)}: ${v1}`, width);
+    const text = `${ANSI.dim}${l1.padEnd(9)}:${ANSI.reset} ${v1}`;
+    return tuiLine(text, width);
   }
   const half = Math.floor((contentWidth - 2) / 2);
-  const col1 = padText(`${l1.padEnd(7)}: ${v1}`, half);
-  const col2 = padText(`${l2.padEnd(7)}: ${v2}`, contentWidth - half - 2);
+  const col1 = padAnsi(`${ANSI.dim}${l1.padEnd(7)}:${ANSI.reset} ${v1}`, half);
+  const col2 = padAnsi(`${ANSI.dim}${l2.padEnd(7)}:${ANSI.reset} ${v2}`, contentWidth - half - 2);
   return tuiLine(`${col1}  ${col2}`, width);
 }
 
 export function renderMeter(pct: number, length = 10): string {
   const filled = Math.min(length, Math.max(0, Math.round((pct / 100) * length)));
-  return `[${"■".repeat(filled)}${"□".repeat(length - filled)}]`;
+  const color = pct >= 80 ? ANSI.green : pct >= 50 ? ANSI.yellow : ANSI.red;
+  return `[${color}${"■".repeat(filled)}${ANSI.dim}${"□".repeat(length - filled)}${ANSI.reset}]`;
 }
 
 export function renderTuiCard(lines: string[]): string {
-  return `\`\`\`text\n${lines.join("\n")}\n\`\`\``;
+  return `\`\`\`ansi\n${lines.join("\n")}\n\`\`\``;
 }

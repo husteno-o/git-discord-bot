@@ -15,23 +15,23 @@ export function createRepoNavButtons(
   const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
       .setCustomId(`repo:overview:${owner}:${repo}`)
-      .setLabel("Overview")
+      .setLabel("📦 Overview")
       .setStyle(activeTab === "overview" ? ButtonStyle.Primary : ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId(`repo:prs:${owner}:${repo}`)
-      .setLabel("PRs")
+      .setLabel("🔀 Pull Requests")
       .setStyle(activeTab === "prs" ? ButtonStyle.Primary : ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId(`repo:issues:${owner}:${repo}`)
-      .setLabel("Issues")
+      .setLabel("🐞 Issues")
       .setStyle(activeTab === "issues" ? ButtonStyle.Primary : ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId(`repo:commits:${owner}:${repo}`)
-      .setLabel("Commits")
+      .setLabel("📜 Commits")
       .setStyle(activeTab === "commits" ? ButtonStyle.Primary : ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId(`repo:releases:${owner}:${repo}`)
-      .setLabel("Releases")
+      .setLabel("🏷️ Releases")
       .setStyle(activeTab === "releases" ? ButtonStyle.Primary : ButtonStyle.Secondary),
   );
 
@@ -57,7 +57,7 @@ export function createPrActionButtons(
       .setCustomId(`pr:merge:${owner}:${repo}:${prNumber}`)
       .setLabel(`${NF.gitMerge} Merge`)
       .setStyle(ButtonStyle.Primary),
-    new ButtonBuilder().setLabel("Open GitHub ↗").setStyle(ButtonStyle.Link).setURL(prUrl),
+    new ButtonBuilder().setLabel("🌐 Open GitHub ↗").setStyle(ButtonStyle.Link).setURL(prUrl),
   );
   return [row];
 }
@@ -66,19 +66,19 @@ export function createHomeNavButtons(): ActionRowBuilder<ButtonBuilder>[] {
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
       .setCustomId("home:nav:repos")
-      .setLabel("Repositories")
+      .setLabel("📦 Repositories")
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId("home:nav:prs")
-      .setLabel("Pull Requests")
+      .setLabel("🔀 Pull Requests")
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId("home:nav:issues")
-      .setLabel("Issues")
+      .setLabel("🐞 Issues")
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId("home:nav:activity")
-      .setLabel("Activity")
+      .setLabel("📈 Activity")
       .setStyle(ButtonStyle.Secondary),
   );
   return [row];
@@ -88,10 +88,10 @@ export function createDeleteSecretButton(messageId: string): ActionRowBuilder<Bu
   return new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
       .setCustomId(`secret:delete:${messageId}`)
-      .setLabel(`${NF.cross} Delete Leaked Message`)
+      .setLabel("🗑️ Delete Leaked Secret")
       .setStyle(ButtonStyle.Danger),
     new ButtonBuilder()
-      .setLabel("Security Guide ↗")
+      .setLabel("🛡️ Security Guide ↗")
       .setStyle(ButtonStyle.Link)
       .setURL(
         "https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/token-expiration-and-revocation",
