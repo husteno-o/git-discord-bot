@@ -4,16 +4,16 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>DevPulse — The GitHub Power-User Operating System for Discord</title>
-  <meta name="description" content="Stop switching between Discord and your browser. Inspect repositories, review and merge pull requests, trigger CI/CD pipelines, and trace lifecycles right from Discord." />
+  <meta name="description" content="Eliminate context switching. Review pull requests, merge code, monitor GitHub Actions CI/CD pipelines, and trace lifecycles directly from Discord." />
   
   <!-- OpenGraph / Social Meta Tags -->
   <meta property="og:type" content="website" />
-  <meta property="og:title" content="DevPulse — The GitHub Power-User Operating System for Discord" />
-  <meta property="og:description" content="Deep GitHub intelligence, pull request reviews, Actions monitoring, and team telemetry inside Discord." />
+  <meta property="og:title" content="DevPulse — GitHub Power Tools for Discord" />
+  <meta property="og:description" content="Deep GitHub intelligence, pull request workflows, CI/CD telemetry, and team velocity inside Discord." />
   <meta property="og:url" content="https://github.com/husteno-o/git-discord-bot" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="DevPulse — GitHub Power Tools in Discord" />
-  <meta name="twitter:description" content="Never leave Discord for your daily GitHub workflow." />
+  <meta name="twitter:description" content="Zero auth for public repositories. AES-256-GCM encrypted PAT vault." />
 
   <link rel="stylesheet" href="./styles.css" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%232ea043'><path d='M5 3.254V3.25v.004a.75.75 0 1 1 0-.004Zm1.5 0a2.25 2.25 0 1 0-3 2.122V8.75a2.25 2.25 0 0 0 1.5 2.122v.378a2.25 2.25 0 1 0 1.5 0v-.378a2.25 2.25 0 0 0 1.5-2.122V5.376A2.25 2.25 0 0 0 6.5 3.254Z'/></svg>" />
@@ -72,7 +72,7 @@
       </h1>
 
       <p class="hero-subtitle">
-        Eliminate context-switching forever. Review and merge pull requests, inspect repository health, monitor CI/CD Actions runs, trace commit lifecycles, and audit vulnerabilities directly from Discord.
+        Eliminate context-switching forever. Review and merge pull requests, inspect repository health, monitor CI/CD Actions pipelines, trace commit lifecycles, and audit vulnerabilities directly from Discord.
       </p>
 
       <div class="hero-actions">
@@ -84,12 +84,17 @@
         </a>
 
         <div class="clone-pill" id="clone-repo-pill" title="Click to copy clone command">
-          <svg width="14" height="14" viewBox="0 0 16 16">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
             <path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z"/>
             <path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z"/>
           </svg>
           <span>git clone git@github.com:husteno-o/git-discord-bot.git</span>
-          <span class="clone-btn-icon">📋</span>
+          <span class="clone-btn-icon">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z"/>
+              <path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z"/>
+            </svg>
+          </span>
         </div>
       </div>
 
@@ -104,7 +109,7 @@
         </div>
         <div class="hero-badge-item">
           <svg viewBox="0 0 16 16"><path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"/></svg>
-          <span>Zero Open Inbound Ports</span>
+          <span>Zero Inbound Open Ports</span>
         </div>
         <div class="hero-badge-item">
           <svg viewBox="0 0 16 16"><path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"/></svg>
@@ -130,16 +135,36 @@
             </svg>
             <span>#engineering-ops • DevPulse Interactive Terminal</span>
           </div>
-          <div style="width: 50px;"></div>
+          <div class="simulator-telemetry">
+            <span class="telemetry-pill">Latency: &lt;12ms</span>
+          </div>
         </div>
 
         <div class="simulator-tabs">
-          <button class="sim-tab-btn active" data-tab="pr">🔀 /pr 142</button>
-          <button class="sim-tab-btn" data-tab="repo">📊 /repo vercel/next.js</button>
-          <button class="sim-tab-btn" data-tab="actions">⚙️ /actions main</button>
-          <button class="sim-tab-btn" data-tab="investigate">🕵️ /investigate #892</button>
-          <button class="sim-tab-btn" data-tab="code">🧠 /code route-matcher.ts</button>
-          <button class="sim-tab-btn" data-tab="activity">📈 /activity me</button>
+          <button class="sim-tab-btn active" data-tab="pr">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M5 3.254V3.25v.004a.75.75 0 1 1 0-.004Zm1.5 0a2.25 2.25 0 1 0-3 2.122V8.75a2.25 2.25 0 0 0 1.5 2.122v.378a2.25 2.25 0 1 0 1.5 0v-.378a2.25 2.25 0 0 0 1.5-2.122V5.376A2.25 2.25 0 0 0 6.5 3.254Z"/></svg>
+            <span>/pr 142</span>
+          </button>
+          <button class="sim-tab-btn" data-tab="repo">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2.5A2.5 2.5 0 0 1 4.5 0h8.75a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2h-8a1 1 0 0 0-.714 1.7.75.75 0 1 1-1.072 1.05A2.495 2.495 0 0 1 2 11.5Zm10.5-1h-8a1 1 0 0 0-1 1v6.708A2.486 2.486 0 0 1 4.5 9h8ZM5 12.25a.25.25 0 0 1 .25-.25H12v1.5H5.25a.25.25 0 0 1-.25-.25Z"/></svg>
+            <span>/repo vercel/next.js</span>
+          </button>
+          <button class="sim-tab-btn" data-tab="actions">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0ZM1.5 8a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0Zm4.879-2.773 4.264 2.559a.25.25 0 0 1 0 .428l-4.264 2.559A.25.25 0 0 1 6 10.559V5.442a.25.25 0 0 1 .379-.215Z"/></svg>
+            <span>/actions main</span>
+          </button>
+          <button class="sim-tab-btn" data-tab="investigate">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8.75.75V3h5.5a.75.75 0 0 1 0 1.5h-5.5v2.25a.75.75 0 0 1-1.5 0V4.5H1.75a.75.75 0 0 1 0-1.5h5.5V.75a.75.75 0 0 1 1.5 0ZM1.75 10h5.5v2.25a.75.75 0 0 0 1.5 0V11.5h5.5a.75.75 0 0 0 0-1.5h-5.5V7.75a.75.75 0 0 0-1.5 0V10H1.75a.75.75 0 0 0 0 1.5Z"/></svg>
+            <span>/investigate #892</span>
+          </button>
+          <button class="sim-tab-btn" data-tab="code">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="m11.28 3.22 4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.749.749 0 0 1-1.275-.326.749.749 0 0 1 .215-.734L13.94 8l-3.72-3.72a.749.749 0 0 1 .215-.734.749.749 0 0 1 1.06-.026Zm-6.56 0a.75.75 0 0 1 1.06 0 .749.749 0 0 1 .215.734.749.749 0 0 1-.215.734L2.06 8l3.72 3.72a.749.749 0 0 1-.215.734.749.749 0 0 1-1.06.026L.22 8.53a.75.75 0 0 1 0-1.06l4.25-4.25a.75.75 0 0 1 1.06 0Z"/></svg>
+            <span>/code route-matcher.ts</span>
+          </button>
+          <button class="sim-tab-btn" data-tab="activity">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M1.5 1.75V13.5h13.75a.75.75 0 0 1 0 1.5H.75a.75.75 0 0 1-.75-.75V1.75a.75.75 0 0 1 1.5 0Zm14.28 2.53-5.25 5.25a.75.75 0 0 1-1.06 0L7 7.06 2.53 11.53a.75.75 0 0 1-1.06-1.06l5-5a.75.75 0 0 1 1.06 0L10 7.94l4.72-4.72a.75.75 0 0 1 1.06 1.06Z"/></svg>
+            <span>/activity me</span>
+          </button>
         </div>
 
         <div class="simulator-body" id="simulator-render-area">
@@ -220,7 +245,7 @@
             </div>
             <span class="feature-command-badge">/code</span>
           </div>
-          <h3 class="feature-name">Code Viewer & Blame</h3>
+          <h3 class="feature-name">Code Viewer &amp; Blame</h3>
           <p class="feature-text">Read remote source code with syntax highlighting, perform git blame on specific line intervals, and resolve which PR introduced a given commit.</p>
           <ul class="feature-bullets">
             <li><svg viewBox="0 0 16 16"><path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"/></svg> Line-by-line commit authorship</li>
@@ -232,12 +257,12 @@
         <div class="feature-card">
           <div class="feature-top">
             <div class="feature-icon-box">
-              <svg viewBox="0 0 16 16"><path d="M11.5 7a4.499 4.499 0 1 1-8.998 0A4.499 4.499 0 0 1 11.5 7Zm-.82 4.74a6 6 0 1 0-1.06 1.06l3.04 3.04a.75.75 0 1 0 1.06-1.06l-3.04-3.04Z"/></svg>
+              <svg viewBox="0 0 16 16"><path d="M8.75.75V3h5.5a.75.75 0 0 1 0 1.5h-5.5v2.25a.75.75 0 0 1-1.5 0V4.5H1.75a.75.75 0 0 1 0-1.5h5.5V.75a.75.75 0 0 1 1.5 0ZM1.75 10h5.5v2.25a.75.75 0 0 0 1.5 0V11.5h5.5a.75.75 0 0 0 0-1.5h-5.5V7.75a.75.75 0 0 0-1.5 0V10H1.75a.75.75 0 0 0 0 1.5Z"/></svg>
             </div>
             <span class="feature-command-badge">/investigate</span>
           </div>
           <h3 class="feature-name">Lifecycle Investigation</h3>
-          <p class="feature-text">Reconstruct the entire lifecycle of a bug or feature: Originating Issue -> Commits -> Pull Request -> Reviewers -> Merge -> Release Tag.</p>
+          <p class="feature-text">Reconstruct the entire lifecycle of a bug or feature: Originating Issue -&gt; Commits -&gt; Pull Request -&gt; Reviewers -&gt; Merge -&gt; Release Tag.</p>
           <ul class="feature-bullets">
             <li><svg viewBox="0 0 16 16"><path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"/></svg> Complete chronological timeline</li>
             <li><svg viewBox="0 0 16 16"><path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"/></svg> Identifies approvals and release tags</li>
@@ -253,10 +278,10 @@
             <span class="feature-command-badge">/activity</span>
           </div>
           <h3 class="feature-name">Developer Histograms</h3>
-          <p class="feature-text">Visualize commit rhythms with ASCII weekly bar charts (`Mon ████████`), addition/deletion churn rates, and team turnaround velocity.</p>
+          <p class="feature-text">Visualize commit rhythms with ASCII weekly bar charts, addition/deletion churn rates, and team turnaround velocity.</p>
           <ul class="feature-bullets">
             <li><svg viewBox="0 0 16 16"><path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"/></svg> Terminal-friendly ASCII histograms</li>
-            <li><svg viewBox="0 0 16 16"><path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"/></svg> /activity me personal stats</li>
+            <li><svg viewBox="0 0 16 16"><path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"/></svg> /activity me personal statistics</li>
           </ul>
         </div>
 
@@ -269,7 +294,7 @@
             <span class="feature-command-badge">/trending</span>
           </div>
           <h3 class="feature-name">Ecosystem Radar</h3>
-          <p class="feature-text">Curated trending repos across modern stacks: TypeScript, Rust, AI/ML, Bun, Databases, Go, and Python with daily and weekly star velocity metrics.</p>
+          <p class="feature-text">Curated trending repos across modern stacks: TypeScript, Rust, AI/ML, Bun, Databases, Go, and Python with star velocity metrics.</p>
           <ul class="feature-bullets">
             <li><svg viewBox="0 0 16 16"><path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"/></svg> 7 modern ecosystem filters</li>
             <li><svg viewBox="0 0 16 16"><path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"/></svg> High-signal growth filtering</li>
@@ -285,10 +310,10 @@
             <span class="feature-command-badge">/watch</span>
           </div>
           <h3 class="feature-name">GitHub Watchtower</h3>
-          <p class="feature-text">Subscribe specific Discord channels to releases, pull requests, issues, or security advisories. Configure granular event routing per repository.</p>
+          <p class="feature-text">Subscribe specific Discord channels to releases, pull requests, issues, or security advisories with granular routing per repo.</p>
           <ul class="feature-bullets">
-            <li><svg viewBox="0 0 16 16"><path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"/></svg> Automated webhook delivery</li>
-            <li><svg viewBox="0 0 16 16"><path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"/></svg> Multi-channel event distribution</li>
+            <li><svg viewBox="0 0 16 16"><path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"/></svg> Automated event notifications</li>
+            <li><svg viewBox="0 0 16 16"><path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"/></svg> Multi-channel event routing</li>
           </ul>
         </div>
 
@@ -301,9 +326,9 @@
             <span class="feature-command-badge">/actions</span>
           </div>
           <h3 class="feature-name">CI/CD Workflow Tree</h3>
-          <p class="feature-text">Visual representation of GitHub Actions pipelines in structured ASCII trees. Track run conclusions, durations, and trigger job reruns directly in Discord.</p>
+          <p class="feature-text">Visual representation of GitHub Actions pipelines in structured ASCII trees. Track conclusions, durations, and trigger reruns directly from Discord.</p>
           <ul class="feature-bullets">
-            <li><svg viewBox="0 0 16 16"><path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"/></svg> Visual branch & job hierarchy</li>
+            <li><svg viewBox="0 0 16 16"><path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"/></svg> Visual branch &amp; job hierarchy</li>
             <li><svg viewBox="0 0 16 16"><path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"/></svg> Rerun and cancel workflows</li>
           </ul>
         </div>
@@ -316,10 +341,10 @@
             </div>
             <span class="feature-command-badge">/security</span>
           </div>
-          <h3 class="feature-name">Security & Leak Guard</h3>
+          <h3 class="feature-name">Security &amp; Leak Guard</h3>
           <p class="feature-text">Dependabot vulnerability alerts, GHSA / CVE breakdowns, and background message scanner that detects leaked tokens with one-click revocation guides.</p>
           <ul class="feature-bullets">
-            <li><svg viewBox="0 0 16 16"><path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"/></svg> Dependabot & GHSA vulnerability feeds</li>
+            <li><svg viewBox="0 0 16 16"><path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"/></svg> Dependabot &amp; GHSA vulnerability feeds</li>
             <li><svg viewBox="0 0 16 16"><path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"/></svg> Zero-log message secret scanner</li>
           </ul>
         </div>
@@ -333,7 +358,7 @@
             <span class="feature-command-badge">/release</span>
           </div>
           <h3 class="feature-name">Release Management</h3>
-          <p class="feature-text">Inspect published tags, compare commit deltas between releases (`v1.2.0...v1.3.0`), and automatically generate markdown release notes from merged PRs.</p>
+          <p class="feature-text">Inspect published tags, compare commit deltas between releases (v1.2.0...v1.3.0), and automatically generate markdown release notes from merged PRs.</p>
           <ul class="feature-bullets">
             <li><svg viewBox="0 0 16 16"><path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"/></svg> Tag comparison and asset counts</li>
             <li><svg viewBox="0 0 16 16"><path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"/></svg> Automated changelog generator</li>
@@ -348,7 +373,7 @@
             </div>
             <span class="feature-command-badge">/team</span>
           </div>
-          <h3 class="feature-name">Team Velocity & Balance</h3>
+          <h3 class="feature-name">Team Velocity &amp; Balance</h3>
           <p class="feature-text">Team turnaround metrics without toxic vanity rankings. Review velocity, cycle times, and review load balancing to prevent engineering burnout.</p>
           <ul class="feature-bullets">
             <li><svg viewBox="0 0 16 16"><path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"/></svg> Review turnaround cycle times</li>
@@ -365,7 +390,7 @@
       <div class="section-header">
         <div class="section-tag">High-Impact Utilities</div>
         <h2 class="section-title">Workflow Accelerators</h2>
-        <p class="section-desc">Designed to solve everyday engineering bottlenecks in seconds.</p>
+        <p class="section-desc">Designed to eliminate engineering bottlenecks in seconds.</p>
       </div>
 
       <div class="killer-grid">
@@ -382,7 +407,7 @@
             <svg width="18" height="18" viewBox="0 0 16 16" fill="var(--gh-purple)"><path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-6.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM6.92 6.085h.001a.749.749 0 0 1 1.059-.062 1.488 1.488 0 0 1 .494 1.102c0 .546-.3.923-.627 1.258-.293.301-.597.613-.597 1.117a.75.75 0 0 1-1.5 0c0-.987.585-1.59 1.002-2.018.232-.238.472-.484.472-.757a.253.253 0 0 0-.083-.188.27.27 0 0 0-.174-.052c-.176 0-.31.092-.41.228a.75.75 0 0 1-1.135-.628ZM8 12.5a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z"/></svg>
             /why Archaeology
           </h4>
-          <p class="killer-card-desc">Trace any file and line change back through Commit -> Pull Request -> Originating Issue to answer why a piece of code exists.</p>
+          <p class="killer-card-desc">Trace any file and line change back through Commit -&gt; Pull Request -&gt; Originating Issue to answer why a piece of code exists.</p>
         </div>
 
         <div class="killer-card">
@@ -408,7 +433,7 @@
   <section class="arch-section" id="architecture">
     <div class="container">
       <div class="section-header">
-        <div class="section-tag">Security & Infrastructure</div>
+        <div class="section-tag">Security &amp; Infrastructure</div>
         <h2 class="section-title">Zero-Trust Architecture</h2>
         <p class="section-desc">Engineered for security-conscious teams, open-source communities, and enterprise organizations.</p>
       </div>
@@ -452,7 +477,7 @@
   <section class="install-section" id="quickstart">
     <div class="container">
       <div class="section-header">
-        <div class="section-tag">Self-Hosting & Setup</div>
+        <div class="section-tag">Self-Hosting &amp; Setup</div>
         <h2 class="section-title">Get Started in Under 3 Minutes</h2>
         <p class="section-desc">Clone the repository, configure your Discord bot token, and launch DevPulse with Bun.</p>
       </div>
@@ -464,7 +489,7 @@
             <span class="window-dot dot-yellow"></span>
             <span class="window-dot dot-green"></span>
           </div>
-          <span style="font-family: var(--font-mono); font-size: 0.8rem; color: var(--text-secondary);">bash • terminal</span>
+          <span style="font-family: var(--font-mono); font-size: 0.8rem; color: var(--text-secondary);">bash &bull; terminal</span>
           <button class="terminal-copy-btn" onclick="copyText('git clone git@github.com:husteno-o/git-discord-bot.git\ncd git-discord-bot\nbun install\ncp .env.example .env\nbun run start', this)" title="Copy all commands">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
               <path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z"/>
@@ -501,7 +526,7 @@
           Hosting this landing page on Cloudflare Pages:
         </p>
         <div style="display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: 8px; font-family: var(--font-mono); font-size: 0.85rem; color: var(--gh-blue);">
-          <span>Deploy Output: <strong>apps/web/dist</strong> • Build Command: <strong>bun run build:web</strong></span>
+          <span>Deploy Output: <strong>apps/web/dist</strong> &bull; Build Command: <strong>bun run build:web</strong></span>
         </div>
       </div>
     </div>

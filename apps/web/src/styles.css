@@ -498,6 +498,22 @@ body {
   gap: 8px;
 }
 
+.simulator-telemetry {
+  display: flex;
+  align-items: center;
+}
+
+.telemetry-pill {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--gh-green-hover);
+  background: var(--gh-green-subtle);
+  border: 1px solid var(--gh-green-border);
+  padding: 2px 8px;
+  border-radius: 9999px;
+  letter-spacing: 0.3px;
+}
+
 .simulator-tabs {
   display: flex;
   gap: 4px;
@@ -522,6 +538,10 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.sim-tab-btn svg {
+  flex-shrink: 0;
 }
 
 .sim-tab-btn:hover {
