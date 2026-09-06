@@ -16,6 +16,7 @@ import {
   createRepoDashboardEmbed,
   createSecurityAlertEmbed,
 } from "../ui/embeds.js";
+import { NF } from "../ui/icons.js";
 
 export async function handleMessageCreate(message: Message): Promise<void> {
   // Ignore bot messages
@@ -28,6 +29,12 @@ export async function handleMessageCreate(message: Message): Promise<void> {
     const parts = content.split(/\s+/);
     const repoArg = parts[1];
     if (repoArg) {
+      const statusMsg = await message
+        .reply({
+          content: `${NF.spinner} [ GITBOT ] Connecting to GitHub & fetching \`${repoArg}\`...`,
+        })
+        .catch(() => null);
+
       try {
         const { owner, repo } = githubClient.parseRepoInput(repoArg);
         const ghRepo = await githubClient.getRepo(repoArg);
@@ -42,10 +49,18 @@ export async function handleMessageCreate(message: Message): Promise<void> {
         const embed = createRepoDashboardEmbed(ghRepo, metrics, "overview");
         const components = createRepoNavButtons(owner, repo, "overview");
 
-        await message.reply({ embeds: [embed], components });
+        if (statusMsg) {
+          await statusMsg.edit({ content: "", embeds: [embed], components });
+        } else {
+          await message.reply({ embeds: [embed], components });
+        }
         return;
       } catch (err: any) {
-        await message.reply({ embeds: [createErrorEmbed(err)] });
+        if (statusMsg) {
+          await statusMsg.edit({ content: "", embeds: [createErrorEmbed(err)] });
+        } else {
+          await message.reply({ embeds: [createErrorEmbed(err)] });
+        }
         return;
       }
     }
@@ -53,17 +68,10 @@ export async function handleMessageCreate(message: Message): Promise<void> {
 
   // 2. Text Command: /help or !help
   if (content === "/help" || content === "!help" || content === "help") {
-    const embed = createBaseEmbed("DevPulse — GitHub Command Center")
+    const embed = createBaseEmbed(`${NF.github} GITBOT — Developer Operating System`)
       .setColor(BrandColors.primary)
       .setDescription(
-        "Welcome to **DevPulse**, the Discord command center for developers.\n\n" +
-          "**Quick Commands:**\n" +
-          "• `/repo <owner/repo>` — Repository Intelligence (e.g. `/repo vercel/next.js`)\n" +
-          "• `/pr list <repo>` — View pull requests\n" +
-          "• `/actions <repo>` — Monitor CI/CD workflows\n" +
-          "• `/trending` — Trending GitHub repositories\n" +
-          "• `/tools` — Developer utility suite (b64, jwt, hash, cron)\n\n" +
-          "Select a module below to view detailed features:",
+        `Welcome to **GITBOT**, your terminal command center for GitHub inside Discord.\n\n**Quick Commands:**\n• \`/repo <owner/repo>\` ${NF.arrowRight} Telemetry, health & velocity (e.g. \`/repo swadhinbiswas/warren\`)\n• \`/pr <repo> <number>\` ${NF.arrowRight} Pull request reviews, diffs & 1-click merge\n• \`/actions <repo>\` ${NF.arrowRight} CI/CD workflow tree & run status\n• \`/trending\` ${NF.arrowRight} Rising GitHub repositories across languages\n• \`/tools\` ${NF.arrowRight} Developer utility console (Base64, JWT, Hash, Cron)\n\nUse the menu below to explore all feature areas:`,
       );
     const components = [createHelpSelect()];
     await message.reply({ embeds: [embed], components });
@@ -100,7 +108,7 @@ export async function handleMessageCreate(message: Message): Promise<void> {
     const components = [createDeleteSecretButton(message.id)];
 
     await message.reply({
-      content: `<@${message.author.id}> Security Notice: A sensitive credential pattern was detected in your message!`,
+      content: `<@${message.author.id}> ${NF.shield} **Security Notice**: A sensitive credential pattern was detected in your message!`,
       embeds: [embed],
       components,
     });

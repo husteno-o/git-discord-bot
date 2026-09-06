@@ -21,6 +21,7 @@ import {
   createRepoPrsEmbed,
   createRepoReleasesEmbed,
 } from "../ui/embeds.js";
+import { NF } from "../ui/icons.js";
 
 export async function handleInteraction(interaction: Interaction): Promise<void> {
   // 1. Slash Command
@@ -145,7 +146,7 @@ async function handleButtonClick(interaction: ButtonInteraction): Promise<void> 
       if (action === "approve") {
         await githubClient.createReview(repoInput, prNumber, "APPROVE");
         await interaction.editReply({
-          content: `✅ Successfully approved [PR #${prNumber}](https://github.com/${repoInput}/pull/${prNumber})!`,
+          content: `${NF.check} Successfully approved [PR #${prNumber}](https://github.com/${repoInput}/pull/${prNumber})!`,
         });
         return;
       }
@@ -155,10 +156,10 @@ async function handleButtonClick(interaction: ButtonInteraction): Promise<void> 
           repoInput,
           prNumber,
           "REQUEST_CHANGES",
-          "Changes requested via DevPulse review",
+          "Changes requested via GITBOT review",
         );
         await interaction.editReply({
-          content: `⚠️ Requested changes on [PR #${prNumber}](https://github.com/${repoInput}/pull/${prNumber}).`,
+          content: `${NF.warning} Requested changes on [PR #${prNumber}](https://github.com/${repoInput}/pull/${prNumber}).`,
         });
         return;
       }
@@ -166,13 +167,13 @@ async function handleButtonClick(interaction: ButtonInteraction): Promise<void> 
       if (action === "merge") {
         const result = await githubClient.mergePullRequest(repoInput, prNumber, "merge");
         await interaction.editReply({
-          content: `🔀 Successfully merged [PR #${prNumber}](https://github.com/${repoInput}/pull/${prNumber})!\n${result.message || ""}`,
+          content: `${NF.gitMerge} Successfully merged [PR #${prNumber}](https://github.com/${repoInput}/pull/${prNumber})!\n${result.message || ""}`,
         });
         return;
       }
     } catch (err: any) {
       await interaction.editReply({
-        content: `❌ PR Action failed: ${err.message}`,
+        content: `${NF.cross} PR Action failed: ${err.message}`,
       });
     }
     return;
@@ -181,7 +182,7 @@ async function handleButtonClick(interaction: ButtonInteraction): Promise<void> 
   // 3. Home Navigation Buttons
   if (prefix === "home" && action === "nav") {
     await interaction.reply({
-      content: `📌 Use \`/repo\`, \`/pr\`, or \`/activity\` for detailed deep-dives.`,
+      content: `${NF.github} Use \`/repo\`, \`/pr\`, or \`/activity\` for detailed telemetry.`,
       ephemeral: true,
     });
     return;

@@ -5,6 +5,7 @@ import {
   StringSelectMenuBuilder,
   StringSelectMenuOptionBuilder,
 } from "discord.js";
+import { NF } from "./icons.js";
 
 export function createRepoNavButtons(
   owner: string,
@@ -14,29 +15,24 @@ export function createRepoNavButtons(
   const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
       .setCustomId(`repo:overview:${owner}:${repo}`)
-      .setLabel("Overview")
-      .setStyle(activeTab === "overview" ? ButtonStyle.Primary : ButtonStyle.Secondary)
-      .setEmoji("📌"),
+      .setLabel(`${NF.github} Overview`)
+      .setStyle(activeTab === "overview" ? ButtonStyle.Primary : ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId(`repo:prs:${owner}:${repo}`)
-      .setLabel("PRs")
-      .setStyle(activeTab === "prs" ? ButtonStyle.Primary : ButtonStyle.Secondary)
-      .setEmoji("🔀"),
+      .setLabel(`${NF.gitPullRequest} PRs`)
+      .setStyle(activeTab === "prs" ? ButtonStyle.Primary : ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId(`repo:issues:${owner}:${repo}`)
-      .setLabel("Issues")
-      .setStyle(activeTab === "issues" ? ButtonStyle.Primary : ButtonStyle.Secondary)
-      .setEmoji("🐛"),
+      .setLabel(" Issues")
+      .setStyle(activeTab === "issues" ? ButtonStyle.Primary : ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId(`repo:commits:${owner}:${repo}`)
-      .setLabel("Commits")
-      .setStyle(activeTab === "commits" ? ButtonStyle.Primary : ButtonStyle.Secondary)
-      .setEmoji("🔨"),
+      .setLabel(`${NF.gitCommit} Commits`)
+      .setStyle(activeTab === "commits" ? ButtonStyle.Primary : ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId(`repo:releases:${owner}:${repo}`)
-      .setLabel("Releases")
-      .setStyle(activeTab === "releases" ? ButtonStyle.Primary : ButtonStyle.Secondary)
-      .setEmoji("🚀"),
+      .setLabel(`${NF.gitTag} Releases`)
+      .setStyle(activeTab === "releases" ? ButtonStyle.Primary : ButtonStyle.Secondary),
   );
 
   return [row1];
@@ -51,24 +47,20 @@ export function createPrActionButtons(
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
       .setCustomId(`pr:approve:${owner}:${repo}:${prNumber}`)
-      .setLabel("Approve")
-      .setStyle(ButtonStyle.Success)
-      .setEmoji("✅"),
+      .setLabel(`${NF.check} Approve`)
+      .setStyle(ButtonStyle.Success),
     new ButtonBuilder()
       .setCustomId(`pr:request_changes:${owner}:${repo}:${prNumber}`)
-      .setLabel("Request Changes")
-      .setStyle(ButtonStyle.Danger)
-      .setEmoji("⚠️"),
+      .setLabel(`${NF.warning} Request Changes`)
+      .setStyle(ButtonStyle.Danger),
     new ButtonBuilder()
       .setCustomId(`pr:merge:${owner}:${repo}:${prNumber}`)
-      .setLabel("Merge")
-      .setStyle(ButtonStyle.Primary)
-      .setEmoji("🔀"),
+      .setLabel(`${NF.gitMerge} Merge`)
+      .setStyle(ButtonStyle.Primary),
     new ButtonBuilder()
-      .setLabel("Open GitHub")
+      .setLabel(`${NF.arrowRight} Open GitHub`)
       .setStyle(ButtonStyle.Link)
-      .setURL(prUrl)
-      .setEmoji("↗️"),
+      .setURL(prUrl),
   );
   return [row];
 }
@@ -77,24 +69,20 @@ export function createHomeNavButtons(): ActionRowBuilder<ButtonBuilder>[] {
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
       .setCustomId("home:nav:repos")
-      .setLabel("Repositories")
-      .setStyle(ButtonStyle.Secondary)
-      .setEmoji("📁"),
+      .setLabel(`${NF.package} Repositories`)
+      .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId("home:nav:prs")
-      .setLabel("Pull Requests")
-      .setStyle(ButtonStyle.Secondary)
-      .setEmoji("🔀"),
+      .setLabel(`${NF.gitPullRequest} Pull Requests`)
+      .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId("home:nav:issues")
-      .setLabel("Issues")
-      .setStyle(ButtonStyle.Secondary)
-      .setEmoji("🐛"),
+      .setLabel(" Issues")
+      .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId("home:nav:activity")
-      .setLabel("Activity")
-      .setStyle(ButtonStyle.Secondary)
-      .setEmoji("📈"),
+      .setLabel(`${NF.speedometer} Activity`)
+      .setStyle(ButtonStyle.Secondary),
   );
   return [row];
 }
@@ -103,64 +91,54 @@ export function createDeleteSecretButton(messageId: string): ActionRowBuilder<Bu
   return new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
       .setCustomId(`secret:delete:${messageId}`)
-      .setLabel("Delete Leaked Message")
-      .setStyle(ButtonStyle.Danger)
-      .setEmoji("🗑️"),
+      .setLabel(`${NF.cross} Delete Leaked Message`)
+      .setStyle(ButtonStyle.Danger),
     new ButtonBuilder()
-      .setLabel("Security Guide")
+      .setLabel(`${NF.shield} Security Guide`)
       .setStyle(ButtonStyle.Link)
       .setURL(
         "https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/token-expiration-and-revocation",
-      )
-      .setEmoji("🛡️"),
+      ),
   );
 }
 
 export function createHelpSelect(): ActionRowBuilder<StringSelectMenuBuilder> {
   const menu = new StringSelectMenuBuilder()
     .setCustomId("help:category_select")
-    .setPlaceholder("Explore GitHub Power-User Feature Areas...")
+    .setPlaceholder("Select a GitHub developer suite...")
     .addOptions(
       new StringSelectMenuOptionBuilder()
-        .setLabel("Repository Intelligence (/repo)")
+        .setLabel(`${NF.github} Repository Intelligence (/repo)`)
         .setDescription("Health score, growth, dependencies, metrics")
-        .setValue("repo")
-        .setEmoji("📊"),
+        .setValue("repo"),
       new StringSelectMenuOptionBuilder()
-        .setLabel("Pull Request Tools (/pr)")
+        .setLabel(`${NF.gitPullRequest} Pull Request Tools (/pr)`)
         .setDescription("Stale detection, CI checks, diffs, 1-click merge")
-        .setValue("pr")
-        .setEmoji("🔀"),
+        .setValue("pr"),
       new StringSelectMenuOptionBuilder()
-        .setLabel("GitHub Search Engine (/search)")
+        .setLabel(`${NF.search} GitHub Search Engine (/search)`)
         .setDescription("Code, issues, PRs, repos, commits qualifiers")
-        .setValue("search")
-        .setEmoji("🔎"),
+        .setValue("search"),
       new StringSelectMenuOptionBuilder()
-        .setLabel("Code Intelligence (/code & /why)")
+        .setLabel(`${NF.terminal} Code Intelligence (/code & /why)`)
         .setDescription("File inspection, blame, PR link tracing")
-        .setValue("code")
-        .setEmoji("🧠"),
+        .setValue("code"),
       new StringSelectMenuOptionBuilder()
-        .setLabel("Investigation (/investigate)")
-        .setDescription("Chronological lifecycle timeline: Issue -> Commit -> PR -> Release")
-        .setValue("investigate")
-        .setEmoji("🕵️"),
+        .setLabel(`${NF.speedometer} Investigation (/investigate)`)
+        .setDescription("Lifecycle timeline: Issue -> Commit -> PR -> Release")
+        .setValue("investigate"),
       new StringSelectMenuOptionBuilder()
-        .setLabel("Actions Control Center (/actions)")
+        .setLabel(`${NF.robot} Actions Control Center (/actions)`)
         .setDescription("Visual tree, run inspection, rerun & cancel")
-        .setValue("actions")
-        .setEmoji("⚙️"),
+        .setValue("actions"),
       new StringSelectMenuOptionBuilder()
-        .setLabel("Security (/security)")
+        .setLabel(`${NF.shield} Security Center (/security)`)
         .setDescription("Dependabot alerts, advisories, CVE breakdown")
-        .setValue("security")
-        .setEmoji("🛡️"),
+        .setValue("security"),
       new StringSelectMenuOptionBuilder()
-        .setLabel("Watchtower (/watch)")
+        .setLabel(`${NF.warning} Watchtower Alerts (/watch)`)
         .setDescription("Automated Discord alerts for releases, PRs, issues")
-        .setValue("watch")
-        .setEmoji("🚨"),
+        .setValue("watch"),
     );
 
   return new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(menu);
