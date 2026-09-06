@@ -3,7 +3,7 @@ import { config } from "@devpulse/config";
 import { initDatabase } from "@devpulse/database";
 import { logger } from "@devpulse/logger";
 import { scheduler } from "@devpulse/scheduler";
-import { Client, GatewayIntentBits, Partials } from "discord.js";
+import { Client, Events, GatewayIntentBits, Partials } from "discord.js";
 import { handleInteraction } from "./events/interactionCreate.js";
 import { handleMessageCreate } from "./events/messageCreate.js";
 import { handleReady } from "./events/ready.js";
@@ -21,9 +21,9 @@ export function createBotClient(options?: { enableMessageContent?: boolean }): C
     partials: [Partials.Message, Partials.Channel],
   });
 
-  client.once("ready", (c) => handleReady(c));
-  client.on("interactionCreate", (i) => handleInteraction(i));
-  client.on("messageCreate", (m) => handleMessageCreate(m));
+  client.once(Events.ClientReady, (c) => handleReady(c));
+  client.on(Events.InteractionCreate, (i) => handleInteraction(i));
+  client.on(Events.MessageCreate, (m) => handleMessageCreate(m));
 
   return client;
 }
