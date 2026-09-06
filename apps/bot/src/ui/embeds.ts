@@ -39,7 +39,7 @@ export function createBaseEmbed(title: string, description?: string): EmbedBuild
     .setColor(Macchiato.mauve)
     .setTitle(title)
     .setFooter({
-      text: "GITBOT v2.4.0 • Catppuccin Macchiato TUI",
+      text: "GITBOT v2.4.0 • Terminal Command Center",
       iconURL: "https://github.githubassets.com/favicons/favicon.png",
     })
     .setTimestamp();
@@ -67,7 +67,7 @@ export function createErrorEmbed(error: Error | string): EmbedBuilder {
     .setColor(Macchiato.red)
     .setTitle(`${NF.cross} Execution Error`)
     .setDescription(tui)
-    .setFooter({ text: "GITBOT Error Console • Catppuccin Macchiato" })
+    .setFooter({ text: "GITBOT v2.4.0 • Diagnostic Console" })
     .setTimestamp();
 }
 
@@ -152,7 +152,7 @@ export function createRepoDashboardEmbed(
     .setURL(repo.htmlUrl)
     .setDescription(`${descQuote}${badges}${tui}`)
     .setFooter({
-      text: "GITBOT v2.4.0 • Catppuccin Macchiato TUI • Press buttons below to navigate",
+      text: "GITBOT v2.4.0 • Terminal Command Center • Press buttons below to navigate",
       iconURL: "https://github.githubassets.com/favicons/favicon.png",
     })
     .setTimestamp();

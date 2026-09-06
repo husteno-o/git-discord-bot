@@ -59,20 +59,20 @@ export function clipAnsi(str: string, maxLen: number): string {
 }
 
 export function tuiTopBar(title: string, width = TUI_WIDTH): string {
-  const innerTitle = `${ANSI.cyan}┌─ [ ${ANSI.magenta}${title}${ANSI.cyan} ] ${ANSI.reset}`;
+  const innerTitle = `${ANSI.dim}┌─ [ ${ANSI.magenta}${title}${ANSI.dim} ] ${ANSI.reset}`;
   const rem = width - visibleLength(innerTitle) - 1;
-  return `${innerTitle}${ANSI.cyan}${"─".repeat(Math.max(0, rem))}┐${ANSI.reset}`;
+  return `${innerTitle}${ANSI.dim}${"─".repeat(Math.max(0, rem))}┐${ANSI.reset}`;
 }
 
 export function tuiBottomBar(width = TUI_WIDTH): string {
-  return `${ANSI.cyan}└${"─".repeat(width - 2)}┘${ANSI.reset}`;
+  return `${ANSI.dim}└${"─".repeat(width - 2)}┘${ANSI.reset}`;
 }
 
 export function tuiDivider(title?: string, width = TUI_WIDTH): string {
   if (!title) {
-    return `${ANSI.cyan}├${"─".repeat(width - 2)}┤${ANSI.reset}`;
+    return `${ANSI.dim}├${"─".repeat(width - 2)}┤${ANSI.reset}`;
   }
-  const prefix = `${ANSI.cyan}├─ ${ANSI.yellow}${title} ${ANSI.cyan}`;
+  const prefix = `${ANSI.dim}├─ ${ANSI.blue}${title} ${ANSI.dim}`;
   const rem = width - visibleLength(prefix) - 1;
   return `${prefix}${"─".repeat(Math.max(0, rem))}┤${ANSI.reset}`;
 }
@@ -80,7 +80,7 @@ export function tuiDivider(title?: string, width = TUI_WIDTH): string {
 export function tuiLine(text = "", width = TUI_WIDTH): string {
   const contentWidth = width - 4;
   const clipped = clipAnsi(text, contentWidth);
-  return `${ANSI.cyan}│${ANSI.reset} ${padAnsi(clipped, contentWidth)} ${ANSI.cyan}│${ANSI.reset}`;
+  return `${ANSI.dim}│${ANSI.reset} ${padAnsi(clipped, contentWidth)} ${ANSI.dim}│${ANSI.reset}`;
 }
 
 export function tuiPrompt(cmd: string, width = TUI_WIDTH): string {
