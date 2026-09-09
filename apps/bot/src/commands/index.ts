@@ -2,6 +2,7 @@ import { actionsCommand } from "./actions.js";
 import { activityCommand } from "./activity.js";
 import { aiCommand } from "./ai.js";
 import { askCommand } from "./ask.js";
+import { codeReviewCommand } from "./code-review.js";
 import { codeCommand } from "./code.js";
 import { connectCommand } from "./connect.js";
 import { helpCommand } from "./help.js";
@@ -24,6 +25,7 @@ export const commands: Command[] = [
   repoCommand,
   prCommand,
   aiCommand,
+  codeReviewCommand,
   searchCommand,
   codeCommand,
   investigateCommand,

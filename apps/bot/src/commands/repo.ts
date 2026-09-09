@@ -88,8 +88,11 @@ export const repoCommand: Command = {
           const components = createRepoNavButtons(owner, repo, "overview");
 
           await interaction.editReply({ content: "", embeds: [embed], components });
-        } catch (err: any) {
-          await interaction.editReply({ content: "", embeds: [createErrorEmbed(err)] });
+        } catch (err: unknown) {
+          await interaction.editReply({
+            content: "",
+            embeds: [createErrorEmbed(err instanceof Error ? err : new Error(String(err)))],
+          });
         }
       },
     );

@@ -3,6 +3,16 @@ import { db, repositories, users } from "@devpulse/database";
 import { type GitHubClient, githubClient } from "@devpulse/github";
 import { eq } from "drizzle-orm";
 
+interface GitHubEvent {
+  type: string;
+  created_at: string;
+  payload?: {
+    action?: string;
+    commits?: { message: string }[];
+    pull_request?: { merged?: boolean };
+  };
+}
+
 export interface PersonalStats {
   githubUsername: string;
   periodDays: number;
@@ -52,7 +62,7 @@ export class AnalyticsService {
     });
 
     const username = user?.githubUsername || "octocat";
-    const events = await this.gh.getUserEvents(username, 100);
+    const events = (await this.gh.getUserEvents(username, 100)) as GitHubEvent[];
 
     const now = Date.now();
     const cutoff = now - periodDays * 24 * 60 * 60 * 1000;

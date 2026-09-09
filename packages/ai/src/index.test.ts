@@ -75,7 +75,7 @@ describe("AI Copilot & Code Intelligence Engine", () => {
         additions: 15,
         deletions: 2,
         changes: 17,
-        patch: `@@ -10,5 +10,8 @@\n+  const secret = "ghp_1234567890abcdef";\n+  eval(userCode);\n+  console.log("Token verified");`,
+        patch: `@@ -10,5 +10,8 @@\n+  const apiKey = "TEST_API_KEY_12345";\n+  new Function("userCode")();\n+  console.log("Token verified");`,
       },
     ];
 

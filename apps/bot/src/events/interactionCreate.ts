@@ -8,6 +8,7 @@ import {
   type ChatInputCommandInteraction,
   type Interaction,
   PermissionFlagsBits,
+  type PermissionsBitField,
   type StringSelectMenuInteraction,
 } from "discord.js";
 import { getModuleHelpEmbed } from "../commands/help.js";
@@ -83,9 +84,9 @@ async function handleSlashCommand(interaction: ChatInputCommandInteraction): Pro
 
   try {
     await command.execute(interaction);
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error({ err }, "Error during command execution");
-    const errorEmbed = createErrorEmbed(err);
+    const errorEmbed = createErrorEmbed(err instanceof Error ? err : new Error(String(err)));
 
     if (interaction.deferred) {
       await interaction.editReply({ embeds: [errorEmbed] }).catch(() => {});
@@ -111,7 +112,7 @@ async function handleButtonClick(interaction: ButtonInteraction): Promise<void> 
           const hasPerm =
             member &&
             "permissions" in member &&
-            (member.permissions as any).has(PermissionFlagsBits.ManageMessages);
+            (member.permissions as PermissionsBitField).has(PermissionFlagsBits.ManageMessages);
 
           if (isAuthor || hasPerm) {
             await msg.delete();
@@ -127,9 +128,9 @@ async function handleButtonClick(interaction: ButtonInteraction): Promise<void> 
         content: "You do not have permission to delete this message.",
         ephemeral: true,
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       await interaction.reply({
-        content: `Failed to delete message: ${err.message}`,
+        content: `Failed to delete message: ${err instanceof Error ? err.message : String(err)}`,
         ephemeral: true,
       });
     }
@@ -171,9 +172,9 @@ async function handleButtonClick(interaction: ButtonInteraction): Promise<void> 
         });
         return;
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       await interaction.editReply({
-        content: `${NF.cross} PR Action failed: ${err.message}`,
+        content: `${NF.cross} PR Action failed: ${err instanceof Error ? err.message : String(err)}`,
       });
     }
     return;
@@ -242,8 +243,11 @@ async function handleButtonClick(interaction: ButtonInteraction): Promise<void> 
         await interaction.editReply({ embeds: [embed], components });
         return;
       }
-    } catch (err: any) {
-      await interaction.followUp({ embeds: [createErrorEmbed(err)], ephemeral: true });
+    } catch (err: unknown) {
+      await interaction.followUp({
+        embeds: [createErrorEmbed(err instanceof Error ? err : new Error(String(err)))],
+        ephemeral: true,
+      });
     }
   }
 }

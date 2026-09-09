@@ -119,9 +119,11 @@ export async function validateSafeUrl(rawUrl: string): Promise<URL> {
         );
       }
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     if (err instanceof SecurityError) throw err;
-    throw new SecurityError(`Could not resolve hostname '${hostname}': ${err.message}`);
+    throw new SecurityError(
+      `Could not resolve hostname '${hostname}': ${err instanceof Error ? err.message : String(err)}`,
+    );
   }
 
   return parsed;

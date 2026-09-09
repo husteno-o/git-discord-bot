@@ -13,7 +13,7 @@ async function main() {
       host: config.HOST,
     });
     logger.info({ address }, `DevPulse API server listening on ${address}`);
-  } catch (err) {
+  } catch (err: unknown) {
     logger.error({ err }, "Failed to start DevPulse API server");
     process.exit(1);
   }

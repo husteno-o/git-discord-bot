@@ -432,7 +432,13 @@ export function createBlameEmbed(repo: string, path: string, blame: GitHubBlameL
 }
 
 // 5. ACTIONS TREE EMBED
-export function createActionsTreeEmbed(repo: string, runs: any[]): EmbedBuilder {
+interface WorkflowRun {
+  name: string;
+  conclusion: string | null;
+  headBranch: string;
+}
+
+export function createActionsTreeEmbed(repo: string, runs: WorkflowRun[]): EmbedBuilder {
   const lines = runs.slice(0, 5).map((r, i) => {
     const isLast = i === runs.length - 1;
     const prefix = isLast ? "└──" : "├──";
@@ -475,7 +481,15 @@ export function createSecurityAuditEmbed(
 }
 
 // 7. RELEASE NOTES EMBED
-export function createReleaseNotesEmbed(repo: string, notes: any): EmbedBuilder {
+interface ReleaseNotes {
+  version: string;
+  breaking?: string[];
+  features?: string[];
+  fixes?: string[];
+  contributors?: string[];
+}
+
+export function createReleaseNotesEmbed(repo: string, notes: ReleaseNotes): EmbedBuilder {
   const embed = createBaseEmbed(`${NF.gitTag} Release Notes: ${repo} (${notes.version})`).setColor(
     Macchiato.yellow,
   );
@@ -483,7 +497,7 @@ export function createReleaseNotesEmbed(repo: string, notes: any): EmbedBuilder 
   if (notes.breaking && notes.breaking.length > 0) {
     embed.addFields({
       name: `${NF.warning} Breaking Changes`,
-      value: notes.breaking.map((b: string) => `• ${b}`).join("\n"),
+      value: notes.breaking.map((b) => `• ${b}`).join("\n"),
       inline: false,
     });
   }
@@ -491,7 +505,7 @@ export function createReleaseNotesEmbed(repo: string, notes: any): EmbedBuilder 
   if (notes.features && notes.features.length > 0) {
     embed.addFields({
       name: `${NF.sparkle} Features`,
-      value: notes.features.map((f: string) => `• ${f}`).join("\n"),
+      value: notes.features.map((f) => `• ${f}`).join("\n"),
       inline: false,
     });
   }
@@ -499,7 +513,7 @@ export function createReleaseNotesEmbed(repo: string, notes: any): EmbedBuilder 
   if (notes.fixes && notes.fixes.length > 0) {
     embed.addFields({
       name: `${NF.bug} Bug Fixes`,
-      value: notes.fixes.map((f: string) => `• ${f}`).join("\n"),
+      value: notes.fixes.map((f) => `• ${f}`).join("\n"),
       inline: false,
     });
   }
@@ -507,7 +521,7 @@ export function createReleaseNotesEmbed(repo: string, notes: any): EmbedBuilder 
   if (notes.contributors && notes.contributors.length > 0) {
     embed.addFields({
       name: `${NF.users} Contributors`,
-      value: notes.contributors.map((c: string) => `@${c}`).join(", "),
+      value: notes.contributors.map((c) => `@${c}`).join(", "),
       inline: false,
     });
   }

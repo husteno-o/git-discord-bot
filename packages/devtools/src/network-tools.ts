@@ -52,8 +52,10 @@ export async function lookupDns(
     }
 
     return { hostname: cleanHost, recordType, records };
-  } catch (err: any) {
-    throw new ValidationError(`DNS lookup failed for ${cleanHost} (${recordType}): ${err.message}`);
+  } catch (err: unknown) {
+    throw new ValidationError(
+      `DNS lookup failed for ${cleanHost} (${recordType}): ${err instanceof Error ? err.message : String(err)}`,
+    );
   }
 }
 
@@ -125,7 +127,7 @@ export async function inspectSslCertificate(domain: string, port = 443): Promise
       },
     );
 
-    socket.on("error", (err: any) => {
+    socket.on("error", (err: Error) => {
       reject(new ValidationError(`SSL connection failed: ${err.message}`));
     });
 

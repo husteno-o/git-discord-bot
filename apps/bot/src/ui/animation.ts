@@ -32,6 +32,7 @@ export async function withProgressAnimation<T>(
         .catch(() => {});
     }
   }, 220);
+  interval.unref?.();
 
   try {
     const result = await task();

@@ -48,7 +48,7 @@ async function executeTurso(
   databaseUrl: string,
   authToken: string | undefined,
   sql: string,
-  args: any[],
+  args: unknown[],
 ) {
   const httpUrl = databaseUrl.replace(/^libsql:\/\//, "https://");
   const endpoint = `${httpUrl}/v2/pipeline`;

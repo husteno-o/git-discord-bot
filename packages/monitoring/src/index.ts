@@ -150,9 +150,10 @@ export class MonitoringService {
           }
         }
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       isHealthy = false;
-      errorMessage = err.message || "Network / connection timeout";
+      errorMessage =
+        (err instanceof Error ? err.message : String(err)) || "Network / connection timeout";
     }
 
     const responseTimeMs = Date.now() - startTime;
@@ -227,7 +228,7 @@ export class MonitoringService {
         try {
           const res = await this.checkMonitor(m.id);
           outcomes.push(res);
-        } catch (err) {
+        } catch (err: unknown) {
           logger.error({ err, monitorId: m.id }, "Error during scheduled monitor check");
         }
       }

@@ -1,12 +1,21 @@
 import { initDatabase } from "@devpulse/database";
 import { logger } from "@devpulse/logger";
+import type { MonitorCheckOutcome } from "@devpulse/monitoring";
 import { type DueReminder, scheduler } from "@devpulse/scheduler";
 import {
   ActivityType,
   ApplicationIntegrationType,
   type Client,
+  type DMChannel,
   InteractionContextType,
+  type NewsChannel,
+  type SlashCommandBuilder,
+  type TextChannel,
+  type ThreadChannel,
+  type VoiceChannel,
 } from "discord.js";
+
+type SendableChannel = TextChannel | DMChannel | NewsChannel | ThreadChannel | VoiceChannel;
 import { commands } from "../commands/index.js";
 import { BrandColors } from "../ui/colors.js";
 import { createBaseEmbed } from "../ui/embeds.js";
@@ -33,7 +42,7 @@ export async function handleReady(client: Client<true>): Promise<void> {
   try {
     logger.info("Registering slash commands with Discord REST API (Server + User App support)...");
     const commandData = commands.map((c) => {
-      const data = c.data as any;
+      const data = c.data as SlashCommandBuilder;
       if (typeof data.setIntegrationTypes === "function") {
         data.setIntegrationTypes([
           ApplicationIntegrationType.GuildInstall,
@@ -54,7 +63,7 @@ export async function handleReady(client: Client<true>): Promise<void> {
       { commandCount: commands.length },
       "Slash commands registered successfully with Server & User App contexts",
     );
-  } catch (err) {
+  } catch (err: unknown) {
     logger.error({ err }, "Failed to register slash commands");
   }
 
@@ -67,7 +76,7 @@ export async function handleReady(client: Client<true>): Promise<void> {
           content: `<@${reminder.userId}> ⏰ **Reminder**: ${reminder.message}`,
         });
       }
-    } catch (err) {
+    } catch (err: unknown) {
       logger.error(
         { err, reminderId: reminder.id },
         "Failed to deliver scheduled reminder message",
@@ -75,7 +84,7 @@ export async function handleReady(client: Client<true>): Promise<void> {
     }
   });
 
-  scheduler.setMonitorAlertHandler(async (outcome: any) => {
+  scheduler.setMonitorAlertHandler(async (outcome: MonitorCheckOutcome) => {
     try {
       // Find server's notification channel or system channel
       const guild = await client.guilds.fetch(outcome.guildId).catch(() => null);
@@ -94,9 +103,9 @@ export async function handleReady(client: Client<true>): Promise<void> {
             `**Target:** \`${outcome.url}\` (${outcome.name})\n**Status:** \`${outcome.statusCode ?? "ERROR"}\`\n**Latency:** \`${outcome.responseTimeMs}ms\`\n${outcome.errorMessage ? `**Reason:** ${outcome.errorMessage}` : ""}`,
           );
 
-        await (channel as any).send({ embeds: [embed] });
+        await (channel as SendableChannel).send({ embeds: [embed] });
       }
-    } catch (err) {
+    } catch (err: unknown) {
       logger.error({ err }, "Failed to deliver monitor alert message");
     }
   });

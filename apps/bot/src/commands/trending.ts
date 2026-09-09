@@ -39,7 +39,8 @@ export const trendingCommand: Command = {
   async execute(interaction) {
     await interaction.deferReply();
     const language = interaction.options.getString("language") || undefined;
-    const since = (interaction.options.getString("since") as any) || "weekly";
+    const since =
+      (interaction.options.getString("since") as "daily" | "weekly" | "monthly") || "weekly";
 
     try {
       const repos = await githubClient.getTrendingRepositories(language, since);
@@ -62,8 +63,10 @@ export const trendingCommand: Command = {
         .setDescription(lines.length > 0 ? lines.join("\n") : "No trending repositories found.");
 
       await interaction.editReply({ embeds: [embed] });
-    } catch (err: any) {
-      await interaction.editReply({ embeds: [createErrorEmbed(err)] });
+    } catch (err: unknown) {
+      await interaction.editReply({
+        embeds: [createErrorEmbed(err instanceof Error ? err : new Error(String(err)))],
+      });
     }
   },
 };

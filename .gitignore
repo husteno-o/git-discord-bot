@@ -12,3 +12,8 @@ dist/
 coverage/
 *.zip
 .DS_Store
+.commandcode/
+CODE_REVIEW_*.md
+CODE_REVIEW_*.json
+review.ts
+.understand-anything/

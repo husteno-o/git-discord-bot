@@ -52,15 +52,20 @@ export const ConfigSchema = z.object({
   GITHUB_REDIRECT_URI: z.string().optional(),
 
   // Optional AI integration
-  AI_PROVIDER: z.enum(["opencode", "openai", "anthropic", "gemini", "none"]).default("opencode"),
+  // spark = OpenCode Zen (spark-1.3) → Command Code (longcat-2.0:free) fallback chain
+  AI_PROVIDER: z
+    .enum(["spark", "opencode", "commandcode", "openai", "anthropic", "gemini", "none"])
+    .default("spark"),
   AI_API_KEY: z.string().optional(),
   AI_BASE_URL: z.string().default("https://opencode.ai/zen/v1"),
-  AI_MODEL: z.string().default("nemotron-3.5-lightning-free"),
+  AI_MODEL: z.string().default("spark-1.3"),
 
   // Security & Rate Limiting
   RATE_LIMIT_USER_MAX: z.coerce.number().int().positive().default(10),
   RATE_LIMIT_USER_WINDOW_SEC: z.coerce.number().int().positive().default(10),
   ENABLE_SECRET_SCANNING: z.coerce.boolean().default(true),
+  ENCRYPTION_KEY: z.string().optional(),
+  ENCRYPTION_SALT: z.string().optional(),
 });
 
 export type Config = z.infer<typeof ConfigSchema>;
@@ -77,7 +82,7 @@ export function loadConfig(customEnv: Record<string, string | undefined> = proce
     const errorDetails = parsed.error.issues
       .map((issue) => `  - ${issue.path.join(".")}: ${issue.message}`)
       .join("\n");
-    throw new Error(`Configuration validation error:\n${errorDetails}`);
+    throw new Error(`Configuration validation failed:\n${errorDetails}`);
   }
 
   if (customEnv === process.env) {

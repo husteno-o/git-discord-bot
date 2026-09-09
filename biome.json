@@ -7,7 +7,16 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "ignore": ["node_modules", "dist", ".drizzle", "devpulse.db*"]
+    "ignore": [
+      "node_modules",
+      "dist",
+      ".drizzle",
+      "devpulse.db*",
+      "CODE_REVIEW_*.md",
+      "CODE_REVIEW_*.json",
+      "review.ts",
+      ".understand-anything/knowledge-graph.json"
+    ]
   },
   "formatter": {
     "enabled": true,

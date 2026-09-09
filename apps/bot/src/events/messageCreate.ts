@@ -54,11 +54,12 @@ export async function handleMessageCreate(message: Message): Promise<void> {
           await message.reply({ embeds: [embed], components });
         }
         return;
-      } catch (err: any) {
+      } catch (err: unknown) {
+        const error = err instanceof Error ? err : new Error(String(err));
         if (statusMsg) {
-          await statusMsg.edit({ content: "", embeds: [createErrorEmbed(err)] });
+          await statusMsg.edit({ content: "", embeds: [createErrorEmbed(error)] });
         } else {
-          await message.reply({ embeds: [createErrorEmbed(err)] });
+          await message.reply({ embeds: [createErrorEmbed(error)] });
         }
         return;
       }
@@ -107,7 +108,7 @@ export async function handleMessageCreate(message: Message): Promise<void> {
       embeds: [embed],
       components,
     });
-  } catch (err) {
+  } catch (err: unknown) {
     logger.error({ err }, "Error during secret scanning");
   }
 }

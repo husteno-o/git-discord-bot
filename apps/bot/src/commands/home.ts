@@ -53,8 +53,10 @@ export const homeCommand: Command = {
 
       const components = createHomeNavButtons();
       await interaction.editReply({ embeds: [embed], components });
-    } catch (err: any) {
-      await interaction.editReply({ embeds: [createErrorEmbed(err)] });
+    } catch (err: unknown) {
+      await interaction.editReply({
+        embeds: [createErrorEmbed(err instanceof Error ? err : new Error(String(err)))],
+      });
     }
   },
 };

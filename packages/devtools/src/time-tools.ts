@@ -48,8 +48,13 @@ export function parseCronExpression(
   nextOccurrences: Array<{ iso: string; discord: string }>;
 } {
   try {
-    const p: any = cronParser;
-    const parseFn = p.parseExpression || p.default?.parseExpression;
+    interface CronParserModule {
+      parseExpression: (expr: string) => { next: () => { toDate: () => Date } };
+      default?: { parseExpression: (expr: string) => { next: () => { toDate: () => Date } } };
+    }
+    const p: unknown = cronParser;
+    const mod = p as CronParserModule;
+    const parseFn = mod.parseExpression || mod.default?.parseExpression;
     const interval = parseFn(expression.trim());
     const nextOccurrences: Array<{ iso: string; discord: string }> = [];
 
@@ -66,8 +71,10 @@ export function parseCronExpression(
       description: `Runs on schedule: ${expression.trim()}`,
       nextOccurrences,
     };
-  } catch (err: any) {
-    throw new ValidationError(`Invalid cron expression '${expression}': ${err.message}`);
+  } catch (err: unknown) {
+    throw new ValidationError(
+      `Invalid cron expression '${expression}': ${err instanceof Error ? err.message : String(err)}`,
+    );
   }
 }
 
@@ -104,7 +111,9 @@ export function convertTimezone(
       toTimezone: toTz,
       converted: formatter.format(date),
     };
-  } catch (err: any) {
-    throw new ValidationError(`Timezone conversion failed: ${err.message}`);
+  } catch (err: unknown) {
+    throw new ValidationError(
+      `Timezone conversion failed: ${err instanceof Error ? err.message : String(err)}`,
+    );
   }
 }

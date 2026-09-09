@@ -38,7 +38,7 @@ export async function startUnifiedApp() {
   const client = createBotClient();
 
   // 3. Conditionally initialize Fastify HTTP API Server (pure Discord bot mode by default)
-  let apiServer: any = null;
+  let apiServer: ReturnType<typeof buildServer> | null = null;
   if (config.ENABLE_HTTP_API) {
     apiServer = buildServer({ discordClient: client });
     try {
@@ -47,7 +47,7 @@ export async function startUnifiedApp() {
         host: config.HOST,
       });
       logger.info({ address }, `DevPulse HTTP API server listening on ${address}`);
-    } catch (err) {
+    } catch (err: unknown) {
       logger.error({ err }, "Failed to bind DevPulse HTTP API server");
     }
   } else {
@@ -67,7 +67,7 @@ export async function startUnifiedApp() {
       }
       client.destroy();
       logger.info("DevPulse shutdown completed successfully.");
-    } catch (err) {
+    } catch (err: unknown) {
       logger.error({ err }, "Error occurred during shutdown");
     } finally {
       process.exit(0);
@@ -98,9 +98,9 @@ export async function startUnifiedApp() {
     try {
       logger.info("Connecting to Discord Gateway...");
       await client.login(config.DISCORD_TOKEN);
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (
-        err?.message?.includes("disallowed intents") ||
+        (err instanceof Error ? err.message : String(err)).includes("disallowed intents") ||
         String(err).includes("disallowed intents")
       ) {
         logger.warn(
@@ -112,7 +112,7 @@ export async function startUnifiedApp() {
         const fallbackClient = createBotClient({ enableMessageContent: false });
         try {
           await fallbackClient.login(config.DISCORD_TOKEN);
-        } catch (retryErr) {
+        } catch (retryErr: unknown) {
           logger.error({ err: retryErr }, "Failed to login to Discord Gateway after fallback.");
         }
       } else {

@@ -134,7 +134,7 @@ Respond strictly with valid JSON conforming to:
           parsed.poweredBy = aiProvider.name;
           return parsed;
         }
-      } catch (err) {
+      } catch (err: unknown) {
         logger.warn(
           { err },
           "LLM AI review failed, falling back to deterministic heuristic analyzer",
@@ -346,7 +346,7 @@ Respond strictly in valid JSON conforming to:
             poweredBy: aiProvider.name,
           };
         }
-      } catch (err) {
+      } catch (err: unknown) {
         logger.warn(
           { err },
           "LLM standup summarizer failed, using deterministic NLP categorization",
@@ -445,7 +445,7 @@ Respond strictly in valid JSON conforming to:
           parsed.poweredBy = aiProvider.name;
           return parsed;
         }
-      } catch (err) {
+      } catch (err: unknown) {
         logger.warn({ err }, "LLM bugfix generator failed, using heuristic stack trace analyzer");
       }
     }
@@ -539,7 +539,7 @@ Respond strictly in valid JSON conforming to:
           parsed.poweredBy = aiProvider.name;
           return parsed;
         }
-      } catch (err) {
+      } catch (err: unknown) {
         logger.warn({ err }, "LLM code explainer failed, using deterministic AST parser");
       }
     }

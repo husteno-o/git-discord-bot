@@ -121,7 +121,8 @@ export const prCommand: Command = {
       }
 
       if (subcommand === "list") {
-        const state = (interaction.options.getString("state") as any) || "open";
+        const state =
+          (interaction.options.getString("state") as "open" | "closed" | "all") || "open";
         const prs = await githubClient.getPullRequests(repoInput, state, 15);
         const items = prs.map(
           (p) =>
@@ -137,7 +138,10 @@ export const prCommand: Command = {
 
       if (subcommand === "review") {
         const prNumber = interaction.options.getInteger("number", true);
-        const action = interaction.options.getString("action", true) as any;
+        const action = interaction.options.getString("action", true) as
+          | "APPROVE"
+          | "REQUEST_CHANGES"
+          | "COMMENT";
         const comment = interaction.options.getString("comment") || undefined;
 
         await githubClient.createReview(repoInput, prNumber, action, comment);
@@ -152,7 +156,8 @@ export const prCommand: Command = {
 
       if (subcommand === "merge") {
         const prNumber = interaction.options.getInteger("number", true);
-        const method = (interaction.options.getString("method") as any) || "merge";
+        const method =
+          (interaction.options.getString("method") as "merge" | "squash" | "rebase") || "merge";
 
         const res = await githubClient.mergePullRequest(repoInput, prNumber, method);
         const embed = createBaseEmbed(`${NF.gitMerge} Pull Request Merged`)
@@ -195,8 +200,10 @@ export const prCommand: Command = {
         await interaction.editReply({ embeds: [embed] });
         return;
       }
-    } catch (err: any) {
-      await interaction.editReply({ embeds: [createErrorEmbed(err)] });
+    } catch (err: unknown) {
+      await interaction.editReply({
+        embeds: [createErrorEmbed(err instanceof Error ? err : new Error(String(err)))],
+      });
     }
   },
 };

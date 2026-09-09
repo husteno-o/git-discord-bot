@@ -191,8 +191,10 @@ export const aiCommand: Command = {
         await interaction.editReply({ embeds: [embed] });
         return;
       }
-    } catch (err: any) {
-      await interaction.editReply({ embeds: [createErrorEmbed(err)] });
+    } catch (err: unknown) {
+      await interaction.editReply({
+        embeds: [createErrorEmbed(err instanceof Error ? err : new Error(String(err)))],
+      });
     }
   },
 };

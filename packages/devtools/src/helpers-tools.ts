@@ -25,8 +25,10 @@ export function testRegex(
         groups: m.groups,
       })),
     };
-  } catch (err: any) {
-    throw new ValidationError(`Invalid regular expression: ${err.message}`);
+  } catch (err: unknown) {
+    throw new ValidationError(
+      `Invalid regular expression: ${err instanceof Error ? err.message : String(err)}`,
+    );
   }
 }
 

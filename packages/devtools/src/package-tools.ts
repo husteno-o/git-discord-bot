@@ -46,7 +46,7 @@ async function fetchNpmPackage(name: string): Promise<PackageMetadata> {
     throw new NotFoundError(`npm package '${name}' was not found in registry.`);
   }
   if (!res.ok) {
-    throw new Error(`npm registry error: ${res.statusText}`);
+    throw new Error(`Failed to fetch npm package metadata: registry returned ${res.statusText}`);
   }
 
   const data = (await res.json()) as any;
@@ -86,7 +86,7 @@ async function fetchPypiPackage(name: string): Promise<PackageMetadata> {
     throw new NotFoundError(`PyPI package '${name}' was not found in index.`);
   }
   if (!res.ok) {
-    throw new Error(`PyPI registry error: ${res.statusText}`);
+    throw new Error(`Failed to fetch PyPI package metadata: registry returned ${res.statusText}`);
   }
 
   const data = (await res.json()) as any;

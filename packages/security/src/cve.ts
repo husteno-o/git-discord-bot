@@ -36,10 +36,30 @@ export class SecurityService {
           throw new NotFoundError("Vulnerability", cleanId);
         }
         if (!response.ok) {
-          throw new Error(`OSV API returned status ${response.status}`);
+          throw new Error(
+            `Failed to fetch CVE data from OSV API: returned status ${response.status}`,
+          );
         }
 
-        const data = (await response.json()) as any;
+        interface OsvRange {
+          events?: { fixed?: string }[];
+        }
+        interface OsvAffected {
+          ranges?: OsvRange[];
+          package?: { name: string; ecosystem: string };
+        }
+        interface OsvVulnerability {
+          affected?: OsvAffected[];
+          references?: { url: string }[];
+          id: string;
+          summary: string;
+          details?: string;
+          severity?: { score?: string }[];
+          published?: string;
+          modified?: string;
+          database_specific?: { severity?: string };
+        }
+        const data = (await response.json()) as OsvVulnerability;
         const affected = data.affected?.[0];
         const fixedVersions: string[] = [];
 
@@ -51,7 +71,9 @@ export class SecurityService {
           }
         }
 
-        const references = (data.references || []).map((r: any) => r.url).slice(0, 5);
+        const references = ((data as { references?: { url: string }[] }).references || [])
+          .map((r: unknown) => (r as { url: string }).url)
+          .slice(0, 5);
 
         return {
           id: data.id,
@@ -85,7 +107,11 @@ export class SecurityService {
     return getOrSet(
       cacheKey,
       async () => {
-        const body: any = {
+        interface OsvQueryBody {
+          package: { name: string; ecosystem: string };
+          version?: string;
+        }
+        const body: OsvQueryBody = {
           package: {
             name: packageName.trim(),
             ecosystem: ecosystem.trim(),
@@ -102,24 +128,35 @@ export class SecurityService {
         });
 
         if (!response.ok) {
-          throw new Error(`OSV API query error: ${response.statusText}`);
+          throw new Error(`Failed to query OSV API for vulnerabilities: ${response.statusText}`);
         }
 
-        const data = (await response.json()) as any;
+        interface OsvVulnSummary {
+          id: string;
+          summary?: string;
+          details?: string;
+          published?: string;
+          modified?: string;
+          references?: { url: string }[];
+        }
+        interface OsvQueryResponse {
+          vulns?: OsvVulnSummary[];
+        }
+        const data = (await response.json()) as OsvQueryResponse;
         const vulns = data.vulns || [];
 
-        return vulns.slice(0, 10).map((v: any) => ({
+        return vulns.slice(0, 10).map((v) => ({
           id: v.id,
           summary: v.summary || "Advisory reported",
           details: v.details || "",
-          published: v.published,
-          modified: v.modified,
+          published: v.published || new Date().toISOString(),
+          modified: v.modified || new Date().toISOString(),
           affectedPackage: {
             name: packageName,
             ecosystem,
           },
           fixedVersions: [],
-          references: (v.references || []).map((r: any) => r.url).slice(0, 3),
+          references: (v.references || []).map((r) => r.url).slice(0, 3),
         }));
       },
       3600, // 1 hour cache

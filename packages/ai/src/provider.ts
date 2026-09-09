@@ -91,9 +91,8 @@ export class GenericOpenAiCompatibleProvider implements AIProvider {
 
 /**
  * OpenCode Zen AI Gateway Provider
- * Supports free-tier models (e.g. nemotron-3.5-lightning-free) that work
- * WITHOUT an API key. When an API key IS provided, it is sent as a Bearer
- * token for higher rate limits.
+ * Supports free-tier models (e.g. spark-1.3) that work WITHOUT an API key.
+ * When an API key IS provided, it is sent as a Bearer token for higher rate limits.
  */
 export class OpenCodeZenProvider implements AIProvider {
   readonly name: string;
@@ -101,11 +100,7 @@ export class OpenCodeZenProvider implements AIProvider {
   private baseUrl: string;
   private model: string;
 
-  constructor(
-    apiKey?: string,
-    baseUrl = "https://opencode.ai/zen/v1",
-    model = "nemotron-3.5-lightning-free",
-  ) {
+  constructor(apiKey?: string, baseUrl = "https://opencode.ai/zen/v1", model = "spark-1.3") {
     this.name = `OpenCode Zen (${model})`;
     this.apiKey = apiKey;
     this.baseUrl = baseUrl;
@@ -113,7 +108,7 @@ export class OpenCodeZenProvider implements AIProvider {
   }
 
   isEnabled(): boolean {
-    return true; // Free models work without an API key
+    return true;
   }
 
   async generateResponse(
@@ -134,7 +129,6 @@ export class OpenCodeZenProvider implements AIProvider {
       "Content-Type": "application/json",
     };
 
-    // Only attach Authorization if an API key is provided (for higher rate limits)
     if (this.apiKey) {
       headers.Authorization = `Bearer ${this.apiKey}`;
     }
@@ -158,8 +152,121 @@ export class OpenCodeZenProvider implements AIProvider {
       );
     }
 
-    const data = (await response.json()) as any;
+    const data = (await response.json()) as { choices?: { message?: { content?: string } }[] };
     return data.choices?.[0]?.message?.content || "No response generated.";
+  }
+}
+
+/**
+ * Command Code Provider API — OpenAI-compatible endpoint.
+ * Every top model on one API. Free tier includes longcat-2.0:free.
+ * Requires an API key (create one at https://commandcode.ai/studio).
+ * https://api.commandcode.ai/provider/v1
+ */
+export class CommandCodeProvider implements AIProvider {
+  readonly name: string;
+  private apiKey: string;
+  private model: string;
+
+  constructor(apiKey: string, model = "longcat-2.0:free") {
+    this.name = `Command Code (${model})`;
+    this.apiKey = apiKey;
+    this.model = model;
+  }
+
+  isEnabled(): boolean {
+    return Boolean(this.apiKey);
+  }
+
+  async generateResponse(
+    prompt: string,
+    options: { system?: string; maxTokens?: number } = {},
+  ): Promise<string> {
+    if (!this.apiKey) {
+      throw new AppError(
+        "Command Code API key is required. Get one at https://commandcode.ai/studio",
+        "AI_NOT_CONFIGURED",
+        400,
+      );
+    }
+
+    const messages = [
+      {
+        role: "system",
+        content:
+          options.system ||
+          "You are GITBOT AI, a senior software architect and security engineer. Be concise, precise, and practical. Output valid JSON when asked.",
+      },
+      { role: "user", content: prompt },
+    ];
+
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${this.apiKey}`,
+    };
+
+    const response = await fetch("https://api.commandcode.ai/provider/v1/chat/completions", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        model: this.model,
+        messages,
+        max_tokens: options.maxTokens || 1024,
+      }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new AppError(
+        `Command Code API error (${response.status}): ${errText}`,
+        "AI_REQUEST_FAILED",
+        502,
+      );
+    }
+
+    const data = (await response.json()) as { choices?: { message?: { content?: string } }[] };
+    return data.choices?.[0]?.message?.content || "No response generated.";
+  }
+}
+
+/**
+ * Fallback chain provider — tries each provider in order until one succeeds.
+ * If all fail, throws the last error.
+ */
+export class FallbackChainProvider implements AIProvider {
+  readonly name: string;
+  private providers: AIProvider[];
+
+  constructor(providers: AIProvider[]) {
+    this.providers = providers;
+    this.name = providers.map((p) => p.name).join(" → ");
+  }
+
+  isEnabled(): boolean {
+    return this.providers.some((p) => p.isEnabled());
+  }
+
+  async generateResponse(
+    prompt: string,
+    options: { system?: string; maxTokens?: number } = {},
+  ): Promise<string> {
+    const errors: string[] = [];
+
+    for (const provider of this.providers) {
+      if (!provider.isEnabled()) continue;
+      try {
+        return await provider.generateResponse(prompt, options);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        errors.push(`${provider.name}: ${msg}`);
+      }
+    }
+
+    throw new AppError(
+      `All AI providers failed:\n${errors.join("\n")}`,
+      "AI_ALL_PROVIDERS_FAILED",
+      502,
+    );
   }
 }
 
@@ -173,13 +280,27 @@ export function getAiProvider(): AIProvider {
     return new NoopAiProvider();
   }
 
-  // OpenCode Zen — works with free models even without an API key
+  // Command Code — standalone provider (longcat-2.0:free)
+  if (providerType === "commandcode") {
+    if (!apiKey) return new NoopAiProvider();
+    return new CommandCodeProvider(apiKey, model || "longcat-2.0:free");
+  }
+
+  // OpenCode Zen — standalone provider (spark-1.3)
   if (providerType === "opencode") {
     return new OpenCodeZenProvider(
-      apiKey, // undefined is fine for free models
+      apiKey,
       baseUrl || "https://opencode.ai/zen/v1",
-      model || "nemotron-3.5-lightning-free",
+      model || "spark-1.3",
     );
+  }
+
+  // spark = OpenCode Zen (spark-1.3) with Command Code (longcat-2.0:free) fallback
+  if (providerType === "spark") {
+    return new FallbackChainProvider([
+      new OpenCodeZenProvider(apiKey, baseUrl || "https://opencode.ai/zen/v1", "spark-1.3"),
+      ...(apiKey ? [new CommandCodeProvider(apiKey, "longcat-2.0:free")] : []),
+    ]);
   }
 
   // All other providers require an API key

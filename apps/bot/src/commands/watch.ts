@@ -125,13 +125,13 @@ export const watchCommand: Command = {
       // Ensure repository is valid on GitHub
       await githubClient.getRepo(fullTarget);
 
-      const typeMap: Record<string, any> = {
+      const typeMap: Record<string, "github_release" | "github_pr" | "security_alert"> = {
         release: "github_release",
         pr: "github_pr",
         security: "security_alert",
       };
 
-      const notifType = typeMap[subcommand];
+      const notifType = typeMap[subcommand]!;
       const id = `${subcommand}-${Date.now().toString(36)}`;
 
       await db.insert(notifications).values({
@@ -151,8 +151,10 @@ export const watchCommand: Command = {
         );
 
       await interaction.editReply({ embeds: [embed] });
-    } catch (err: any) {
-      await interaction.editReply({ embeds: [createErrorEmbed(err)] });
+    } catch (err: unknown) {
+      await interaction.editReply({
+        embeds: [createErrorEmbed(err instanceof Error ? err : new Error(String(err)))],
+      });
     }
   },
 };

@@ -2,23 +2,37 @@ import { config } from "@devpulse/config";
 import { logger } from "@devpulse/logger";
 import { Redis } from "@upstash/redis";
 
+/** Result of a rate limit check. */
 export interface RateLimitResult {
+  /** Whether the request is allowed. */
   allowed: boolean;
+  /** Remaining requests in the current window. */
   remaining: number;
+  /** Seconds until the rate limit window resets. */
   resetSeconds: number;
 }
 
+/**
+ * Abstraction for cache providers (Redis, in-memory, etc.).
+ * Supports basic CRUD, distributed locks, and rate limiting.
+ */
 export interface CacheProvider {
+  /** Retrieve a value from cache by key. Returns null if not found or expired. */
   get<T>(key: string): Promise<T | null>;
+  /** Store a value in cache with optional TTL in seconds. */
   set<T>(key: string, value: T, ttlSeconds?: number): Promise<void>;
+  /** Delete a value from cache by key. */
   del(key: string): Promise<void>;
+  /** Acquire a distributed lock with a TTL. Returns true if lock was acquired. */
   acquireLock(key: string, ttlSeconds: number): Promise<boolean>;
+  /** Release a previously acquired distributed lock. */
   releaseLock(key: string): Promise<void>;
+  /** Check if a request is within the rate limit window. */
   checkRateLimit(key: string, limit: number, windowSeconds: number): Promise<RateLimitResult>;
 }
 
 export class MemoryCacheProvider implements CacheProvider {
-  private store = new Map<string, { value: any; expiresAt?: number }>();
+  private store = new Map<string, { value: unknown; expiresAt?: number }>();
   private rateLimits = new Map<string, { count: number; resetAt: number }>();
   private locks = new Set<string>();
 
@@ -105,7 +119,7 @@ export class UpstashRedisProvider implements CacheProvider {
     try {
       const res = await this.redis.get<T>(key);
       return res ?? null;
-    } catch (err) {
+    } catch (err: unknown) {
       logger.warn({ err, key }, "Upstash Redis GET failed, returning null");
       return null;
     }
@@ -118,7 +132,7 @@ export class UpstashRedisProvider implements CacheProvider {
       } else {
         await this.redis.set(key, value);
       }
-    } catch (err) {
+    } catch (err: unknown) {
       logger.warn({ err, key }, "Upstash Redis SET failed");
     }
   }
@@ -126,7 +140,7 @@ export class UpstashRedisProvider implements CacheProvider {
   async del(key: string): Promise<void> {
     try {
       await this.redis.del(key);
-    } catch (err) {
+    } catch (err: unknown) {
       logger.warn({ err, key }, "Upstash Redis DEL failed");
     }
   }
@@ -139,7 +153,7 @@ export class UpstashRedisProvider implements CacheProvider {
         ex: ttlSeconds,
       });
       return result === "OK";
-    } catch (err) {
+    } catch (err: unknown) {
       logger.warn({ err, key }, "Upstash Redis acquireLock failed");
       return false;
     }
@@ -148,7 +162,7 @@ export class UpstashRedisProvider implements CacheProvider {
   async releaseLock(key: string): Promise<void> {
     try {
       await this.redis.del(`lock:${key}`);
-    } catch (err) {
+    } catch (err: unknown) {
       logger.warn({ err, key }, "Upstash Redis releaseLock failed");
     }
   }
@@ -180,7 +194,7 @@ export class UpstashRedisProvider implements CacheProvider {
         remaining: Math.max(0, limit - count),
         resetSeconds,
       };
-    } catch (err) {
+    } catch (err: unknown) {
       logger.warn({ err, key }, "Upstash Redis checkRateLimit failed, allowing request by default");
       return { allowed: true, remaining: 1, resetSeconds: 1 };
     }
@@ -227,6 +241,10 @@ export function getCacheProvider(): CacheProvider {
 
 export const cache = getCacheProvider();
 
+/**
+ * Retrieves a cached value or fetches and caches it on cache miss.
+ * Implements cache-aside pattern with the configured provider.
+ */
 export async function getOrSet<T>(
   key: string,
   fetcher: () => Promise<T>,

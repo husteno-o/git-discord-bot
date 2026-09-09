@@ -50,19 +50,19 @@ export class GitHubApiTrendingProvider implements TrendingProvider {
 
     const res = await fetch(url, { headers });
     if (!res.ok) {
-      throw new Error(`GitHub search API error: ${res.statusText}`);
+      throw new Error(`Failed to search GitHub repositories: ${res.statusText}`);
     }
 
-    const data = (await res.json()) as any;
-    const items = data.items || [];
+    const data = (await res.json()) as unknown;
+    const items = (data as { items: unknown[] }).items || [];
 
-    return items.map((item: any) => ({
-      fullName: item.full_name,
-      description: item.description || "No description provided",
-      language: item.language || "Unknown",
-      stars: item.stargazers_count,
-      forks: item.forks_count,
-      url: item.html_url,
+    return items.map((item: unknown) => ({
+      fullName: (item as { full_name: string }).full_name,
+      description: (item as { description?: string }).description || "No description provided",
+      language: (item as { language?: string }).language || "Unknown",
+      stars: (item as { stargazers_count: number }).stargazers_count,
+      forks: (item as { forks_count: number }).forks_count,
+      url: (item as { html_url: string }).html_url,
     }));
   }
 }
@@ -136,7 +136,7 @@ export class TrendingService {
             logger.debug({ provider: p.name }, "Fetching trending repositories");
             const repos = await p.getTrendingRepos(language, period);
             if (repos && repos.length > 0) return repos;
-          } catch (err) {
+          } catch (err: unknown) {
             logger.warn({ err, provider: p.name }, "Trending provider error, trying next");
           }
         }

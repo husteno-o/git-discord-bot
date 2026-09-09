@@ -5,8 +5,9 @@ export function formatJson(input: string, indent = 2): string {
   try {
     const parsed = JSON.parse(input);
     return JSON.stringify(parsed, null, indent);
-  } catch (err: any) {
-    throw new ValidationError(`Invalid JSON: ${err.message}`);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new ValidationError(`Invalid JSON: ${msg}`);
   }
 }
 
@@ -14,8 +15,9 @@ export function minifyJson(input: string): string {
   try {
     const parsed = JSON.parse(input);
     return JSON.stringify(parsed);
-  } catch (err: any) {
-    throw new ValidationError(`Invalid JSON: ${err.message}`);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new ValidationError(`Invalid JSON: ${msg}`);
   }
 }
 
@@ -24,8 +26,8 @@ export function validateJson(input: string): { valid: boolean; error?: string; t
     const parsed = JSON.parse(input);
     const type = Array.isArray(parsed) ? "array" : typeof parsed;
     return { valid: true, type };
-  } catch (err: any) {
-    return { valid: false, error: err.message };
+  } catch (err: unknown) {
+    return { valid: false, error: err instanceof Error ? err.message : String(err) };
   }
 }
 
@@ -33,8 +35,9 @@ export function formatYaml(input: string): string {
   try {
     const parsed = parseYaml(input);
     return stringifyYaml(parsed);
-  } catch (err: any) {
-    throw new ValidationError(`Invalid YAML: ${err.message}`);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new ValidationError(`Invalid YAML: ${msg}`);
   }
 }
 
@@ -42,8 +45,9 @@ export function yamlToJson(yamlInput: string): string {
   try {
     const parsed = parseYaml(yamlInput);
     return JSON.stringify(parsed, null, 2);
-  } catch (err: any) {
-    throw new ValidationError(`Failed to convert YAML to JSON: ${err.message}`);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new ValidationError(`Failed to convert YAML to JSON: ${msg}`);
   }
 }
 
@@ -51,8 +55,9 @@ export function jsonToYaml(jsonInput: string): string {
   try {
     const parsed = JSON.parse(jsonInput);
     return stringifyYaml(parsed);
-  } catch (err: any) {
-    throw new ValidationError(`Failed to convert JSON to YAML: ${err.message}`);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new ValidationError(`Failed to convert JSON to YAML: ${msg}`);
   }
 }
 

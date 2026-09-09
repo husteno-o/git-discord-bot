@@ -8,8 +8,9 @@ export function base64Decode(input: string): string {
   try {
     const buf = Buffer.from(input.trim(), "base64");
     return buf.toString("utf-8");
-  } catch (err: any) {
-    throw new ValidationError(`Failed to decode Base64 string: ${err.message}`);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new ValidationError(`Failed to decode Base64 string: ${msg}`);
   }
 }
 
@@ -20,8 +21,9 @@ export function urlEncode(input: string): string {
 export function urlDecode(input: string): string {
   try {
     return decodeURIComponent(input);
-  } catch (err: any) {
-    throw new ValidationError(`Failed to decode URL string: ${err.message}`);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new ValidationError(`Failed to decode URL string: ${msg}`);
   }
 }
 

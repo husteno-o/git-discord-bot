@@ -89,7 +89,9 @@ export function decodeJwt(token: string): DecodedJwt {
     }
 
     return res;
-  } catch (err: any) {
-    throw new ValidationError(`Failed to decode JWT: ${err.message}`);
+  } catch (err: unknown) {
+    throw new ValidationError(
+      `Failed to decode JWT: ${err instanceof Error ? err.message : String(err)}`,
+    );
   }
 }

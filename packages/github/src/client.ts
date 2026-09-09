@@ -69,7 +69,7 @@ export class GitHubClient {
     endpoint: string,
     options: {
       method?: string;
-      body?: any;
+      body?: unknown;
       token?: string;
       accept?: string;
     } = {},
@@ -131,7 +131,25 @@ export class GitHubClient {
     return getOrSet(
       cacheKey,
       async () => {
-        const raw = await this.request<any>(`/repos/${owner}/${repo}`);
+        const raw = (await this.request<unknown>(`/repos/${owner}/${repo}`)) as {
+          id: number;
+          name: string;
+          full_name: string;
+          owner: { login: string; avatar_url: string };
+          description: string | null;
+          html_url: string;
+          language: string | null;
+          stargazers_count: number;
+          forks_count: number;
+          open_issues_count: number;
+          default_branch: string;
+          private: boolean;
+          created_at: string;
+          updated_at: string;
+          pushed_at: string;
+          topics: string[];
+          license: { name: string; spdx_id: string } | null;
+        };
         return {
           id: raw.id,
           name: raw.name,
@@ -283,18 +301,44 @@ export class GitHubClient {
   // 2. PULL REQUEST POWER TOOLS
   async getPullRequest(repoInput: string, prNumber: number): Promise<GitHubDetailedPullRequest> {
     const { owner, repo } = this.parseRepoInput(repoInput);
-    const raw = await this.request<any>(`/repos/${owner}/${repo}/pulls/${prNumber}`);
-    const reviewsRaw = await this.request<any[]>(
+    const raw = (await this.request<unknown>(`/repos/${owner}/${repo}/pulls/${prNumber}`)) as {
+      id: number;
+      number: number;
+      title: string;
+      body: string | null;
+      state: string;
+      html_url: string;
+      created_at: string;
+      updated_at: string;
+      closed_at: string | null;
+      merged_at: string | null;
+      user: { login: string; avatar_url: string } | null;
+      draft: boolean;
+      additions: number;
+      deletions: number;
+      changed_files: number;
+      mergeable: boolean | null;
+      mergeable_state: string;
+      head: { ref: string } | null;
+      base: { ref: string } | null;
+      requested_reviewers: { login: string }[] | null;
+    };
+    const reviewsRaw = await this.request<unknown[]>(
       `/repos/${owner}/${repo}/pulls/${prNumber}/reviews`,
     ).catch(() => []);
 
-    const reviews = reviewsRaw.map((r) => ({
-      user: r.user?.login || "reviewer",
-      state: r.state as any,
-      submittedAt: r.submitted_at,
-    }));
+    const reviews = reviewsRaw.map((r: unknown) => {
+      const review = r as { user?: { login?: string }; state?: string; submitted_at?: string };
+      return {
+        user: review.user?.login || "reviewer",
+        state: (review.state || "") as "APPROVED" | "CHANGES_REQUESTED" | "COMMENTED" | "PENDING",
+        submittedAt: review.submitted_at,
+      };
+    });
 
-    const requestedReviewers = (raw.requested_reviewers || []).map((u: any) => u.login);
+    const requestedReviewers = (raw.requested_reviewers || []).map(
+      (u: unknown) => (u as { login: string }).login,
+    );
     const createdAtMs = new Date(raw.created_at).getTime();
     const closedOrNowMs = raw.closed_at ? new Date(raw.closed_at).getTime() : Date.now();
     const cycleTimeMs = closedOrNowMs - createdAtMs;
@@ -309,7 +353,7 @@ export class GitHubClient {
       number: raw.number,
       title: raw.title,
       body: raw.body,
-      state: raw.state,
+      state: raw.state as "open" | "closed",
       htmlUrl: raw.html_url,
       createdAt: raw.created_at,
       updatedAt: raw.updated_at,
@@ -339,18 +383,29 @@ export class GitHubClient {
 
   async getPullRequestFiles(repoInput: string, prNumber: number): Promise<GitHubPullRequestFile[]> {
     const { owner, repo } = this.parseRepoInput(repoInput);
-    const raw = await this.request<any[]>(
+    const raw = await this.request<unknown[]>(
       `/repos/${owner}/${repo}/pulls/${prNumber}/files?per_page=100`,
     );
-    return raw.map((f) => ({
-      sha: f.sha,
-      filename: f.filename,
-      status: f.status,
-      additions: f.additions || 0,
-      deletions: f.deletions || 0,
-      changes: f.changes || 0,
-      patch: f.patch,
-    }));
+    return raw.map((f) => {
+      const file = f as {
+        sha: string;
+        filename: string;
+        status: string;
+        additions: number;
+        deletions: number;
+        changes: number;
+        patch?: string;
+      };
+      return {
+        sha: file.sha,
+        filename: file.filename,
+        status: file.status as "added" | "removed" | "modified" | "renamed",
+        additions: file.additions || 0,
+        deletions: file.deletions || 0,
+        changes: file.changes || 0,
+        patch: file.patch,
+      };
+    });
   }
 
   async getPullRequests(
@@ -364,25 +419,40 @@ export class GitHubClient {
     return getOrSet(
       cacheKey,
       async () => {
-        const raw = await this.request<any[]>(
+        const raw = await this.request<unknown[]>(
           `/repos/${owner}/${repo}/pulls?state=${state}&per_page=${limit}&sort=updated&direction=desc`,
         );
-        return raw.map((pr) => ({
-          id: pr.id,
-          number: pr.number,
-          title: pr.title,
-          state: pr.state,
-          htmlUrl: pr.html_url,
-          createdAt: pr.created_at,
-          updatedAt: pr.updated_at,
-          closedAt: pr.closed_at,
-          mergedAt: pr.merged_at,
-          author: {
-            login: pr.user?.login || "ghost",
-            avatarUrl: pr.user?.avatar_url || "",
-          },
-          draft: pr.draft || false,
-        }));
+        return raw.map((pr) => {
+          const pullRequest = pr as {
+            id: number;
+            number: number;
+            title: string;
+            state: string;
+            html_url: string;
+            created_at: string;
+            updated_at: string;
+            closed_at: string | null;
+            merged_at: string | null;
+            user: { login: string; avatar_url: string } | null;
+            draft: boolean;
+          };
+          return {
+            id: pullRequest.id,
+            number: pullRequest.number,
+            title: pullRequest.title,
+            state: pullRequest.state as "open" | "closed",
+            htmlUrl: pullRequest.html_url,
+            createdAt: pullRequest.created_at,
+            updatedAt: pullRequest.updated_at,
+            closedAt: pullRequest.closed_at,
+            mergedAt: pullRequest.merged_at,
+            author: {
+              login: pullRequest.user?.login || "ghost",
+              avatarUrl: pullRequest.user?.avatar_url || "",
+            },
+            draft: pullRequest.draft || false,
+          };
+        });
       },
       120,
       cache,
@@ -427,11 +497,11 @@ export class GitHubClient {
     userToken?: string,
   ): Promise<{ id: number; state: string; htmlUrl: string }> {
     const { owner, repo } = this.parseRepoInput(repoInput);
-    const raw = await this.request<any>(`/repos/${owner}/${repo}/pulls/${prNumber}/reviews`, {
+    const raw = (await this.request<unknown>(`/repos/${owner}/${repo}/pulls/${prNumber}/reviews`, {
       method: "POST",
       body: { event, body: body || `Review submitted via DevPulse: ${event}` },
       token: userToken,
-    });
+    })) as { id: number; state: string; html_url: string };
     return { id: raw.id, state: raw.state, htmlUrl: raw.html_url };
   }
 
@@ -440,120 +510,151 @@ export class GitHubClient {
     const q = repoInput
       ? `${query} repo:${this.parseRepoInput(repoInput).owner}/${this.parseRepoInput(repoInput).repo}`
       : query;
-    const raw = await this.request<{ items: any[] }>(
+    const raw = await this.request<{ items: unknown[] }>(
       `/search/code?q=${encodeURIComponent(q)}&per_page=10`,
     );
-    return (raw.items || []).map((item) => ({
-      name: item.name,
-      path: item.path,
-      sha: item.sha,
-      htmlUrl: item.html_url,
+    return (raw.items || []).map((item: unknown) => ({
+      name: (item as { name: string }).name,
+      path: (item as { path: string }).path,
+      sha: (item as { sha: string }).sha,
+      htmlUrl: (item as { html_url: string }).html_url,
       repository: {
-        fullName: item.repository.full_name,
-        htmlUrl: item.repository.html_url,
+        fullName: (item as { repository: { full_name: string; html_url: string } }).repository
+          .full_name,
+        htmlUrl: (item as { repository: { full_name: string; html_url: string } }).repository
+          .html_url,
       },
-    }));
+    })) as GitHubCodeSearchResult[];
   }
 
   async searchIssues(query: string, repoInput?: string): Promise<GitHubSearchItem[]> {
     const q = repoInput
       ? `${query} repo:${this.parseRepoInput(repoInput).owner}/${this.parseRepoInput(repoInput).repo} type:issue`
       : `${query} type:issue`;
-    const raw = await this.request<{ items: any[] }>(
+    const raw = await this.request<{ items: unknown[] }>(
       `/search/issues?q=${encodeURIComponent(q)}&per_page=10`,
     );
-    return (raw.items || []).map((item) => ({
-      id: item.id,
-      title: item.title,
-      number: item.number,
-      state: item.state,
-      htmlUrl: item.html_url,
-      author: item.user?.login || "ghost",
-      createdAt: item.created_at,
-      updatedAt: item.updated_at,
-      commentsCount: item.comments,
-    }));
+    return (raw.items || []).map((item: unknown) => ({
+      id: (item as { id: number }).id,
+      title: (item as { title: string }).title,
+      number: (item as { number: number }).number,
+      state: (item as { state: string }).state,
+      htmlUrl: (item as { html_url: string }).html_url,
+      author: (item as { user?: { login?: string } }).user?.login || "ghost",
+      createdAt: (item as { created_at: string }).created_at,
+      updatedAt: (item as { updated_at: string }).updated_at,
+      commentsCount: (item as { comments: number }).comments,
+    })) as GitHubSearchItem[];
   }
 
   async searchPullRequests(query: string, repoInput?: string): Promise<GitHubSearchItem[]> {
     const q = repoInput
       ? `${query} repo:${this.parseRepoInput(repoInput).owner}/${this.parseRepoInput(repoInput).repo} type:pr`
       : `${query} type:pr`;
-    const raw = await this.request<{ items: any[] }>(
+    const raw = await this.request<{ items: unknown[] }>(
       `/search/issues?q=${encodeURIComponent(q)}&per_page=10`,
     );
-    return (raw.items || []).map((item) => ({
-      id: item.id,
-      title: item.title,
-      number: item.number,
-      state: item.state,
-      htmlUrl: item.html_url,
-      author: item.user?.login || "ghost",
-      createdAt: item.created_at,
-      updatedAt: item.updated_at,
-      commentsCount: item.comments,
-    }));
+    return (raw.items || []).map((item: unknown) => ({
+      id: (item as { id: number }).id,
+      title: (item as { title: string }).title,
+      number: (item as { number: number }).number,
+      state: (item as { state: string }).state,
+      htmlUrl: (item as { html_url: string }).html_url,
+      author: (item as { user?: { login?: string } }).user?.login || "ghost",
+      createdAt: (item as { created_at: string }).created_at,
+      updatedAt: (item as { updated_at: string }).updated_at,
+      commentsCount: (item as { comments: number }).comments,
+    })) as GitHubSearchItem[];
   }
 
   async searchRepositories(query: string): Promise<GitHubRepo[]> {
-    const raw = await this.request<{ items: any[] }>(
+    const raw = await this.request<{ items: unknown[] }>(
       `/search/repositories?q=${encodeURIComponent(query)}&sort=stars&order=desc&per_page=10`,
     );
-    return (raw.items || []).map((rawRepo) => ({
-      id: rawRepo.id,
-      name: rawRepo.name,
-      fullName: rawRepo.full_name,
-      owner: {
-        login: rawRepo.owner.login,
-        avatarUrl: rawRepo.owner.avatar_url,
-      },
-      description: rawRepo.description,
-      htmlUrl: rawRepo.html_url,
-      language: rawRepo.language,
-      stars: rawRepo.stargazers_count,
-      forks: rawRepo.forks_count,
-      openIssuesCount: rawRepo.open_issues_count,
-      defaultBranch: rawRepo.default_branch,
-      isPrivate: rawRepo.private,
-      createdAt: rawRepo.created_at,
-      updatedAt: rawRepo.updated_at,
-      pushedAt: rawRepo.pushed_at,
-      topics: rawRepo.topics || [],
-      license: rawRepo.license
-        ? { name: rawRepo.license.name, spdxId: rawRepo.license.spdx_id }
-        : null,
-    }));
+    return (raw.items || []).map((rawRepo: unknown) => {
+      const repo = rawRepo as {
+        id: number;
+        name: string;
+        full_name: string;
+        owner: { login: string; avatar_url: string };
+        description: string | null;
+        html_url: string;
+        language: string | null;
+        stargazers_count: number;
+        forks_count: number;
+        open_issues_count: number;
+        default_branch: string;
+        private: boolean;
+        created_at: string;
+        updated_at: string;
+        pushed_at: string;
+        topics?: string[];
+        license: { name: string; spdx_id: string } | null;
+      };
+      return {
+        id: repo.id,
+        name: repo.name,
+        fullName: repo.full_name,
+        owner: {
+          login: repo.owner.login,
+          avatarUrl: repo.owner.avatar_url,
+        },
+        description: repo.description,
+        htmlUrl: repo.html_url,
+        language: repo.language,
+        stars: repo.stargazers_count,
+        forks: repo.forks_count,
+        openIssuesCount: repo.open_issues_count,
+        defaultBranch: repo.default_branch,
+        isPrivate: repo.private,
+        createdAt: repo.created_at,
+        updatedAt: repo.updated_at,
+        pushedAt: repo.pushed_at,
+        topics: repo.topics || [],
+        license: repo.license ? { name: repo.license.name, spdxId: repo.license.spdx_id } : null,
+      };
+    }) as GitHubRepo[];
   }
 
   async searchCommits(query: string, repoInput?: string): Promise<GitHubCommit[]> {
     const q = repoInput
       ? `${query} repo:${this.parseRepoInput(repoInput).owner}/${this.parseRepoInput(repoInput).repo}`
       : query;
-    const raw = await this.request<{ items: any[] }>(
+    const raw = await this.request<{ items: unknown[] }>(
       `/search/commits?q=${encodeURIComponent(q)}&per_page=10`,
       {
         accept: "application/vnd.github.cloak-preview+json",
       },
     );
-    return (raw.items || []).map((c) => ({
-      sha: c.sha,
-      message: c.commit.message,
+    return (raw.items || []).map((c: unknown) => ({
+      sha: (c as { sha: string }).sha,
+      message: (c as { commit: { message: string } }).commit.message,
       author: {
-        name: c.commit.author?.name || "Unknown",
-        login: c.author?.login,
-        date: c.commit.author?.date || new Date().toISOString(),
+        name: (c as { commit: { author?: { name?: string } } }).commit.author?.name || "Unknown",
+        login: (c as { author?: { login?: string } }).author?.login,
+        date:
+          (c as { commit: { author?: { date?: string } } }).commit.author?.date ||
+          new Date().toISOString(),
       },
-      htmlUrl: c.html_url,
-    }));
+      htmlUrl: (c as { html_url: string }).html_url,
+    })) as GitHubCommit[];
   }
 
   // 4. CODE INTELLIGENCE
   async getFileContents(repoInput: string, path: string, ref?: string): Promise<GitHubFileContent> {
     const { owner, repo } = this.parseRepoInput(repoInput);
     const cleanPath = path.replace(/^\//, "");
-    const raw = await this.request<any>(
+    const raw = (await this.request<unknown>(
       `/repos/${owner}/${repo}/contents/${cleanPath}${ref ? `?ref=${ref}` : ""}`,
-    );
+    )) as {
+      name: string;
+      path: string;
+      sha: string;
+      size: number;
+      content?: string;
+      encoding?: string;
+      html_url: string;
+    };
 
     let content = "";
     if (raw.content && raw.encoding === "base64") {
@@ -563,15 +664,19 @@ export class GitHubClient {
     }
 
     // Also get last commit modifying this file
-    const commits = await this.request<any[]>(
+    const commits = await this.request<unknown[]>(
       `/repos/${owner}/${repo}/commits?path=${cleanPath}&per_page=1`,
     ).catch(() => []);
     let lastCommit: GitHubFileContent["lastCommit"] = undefined;
     if (commits.length > 0) {
-      const c = commits[0];
+      const c = commits[0] as {
+        sha: string;
+        commit: { message: string; author?: { name?: string; date?: string } };
+        author?: { login?: string };
+      };
       const match = c.commit.message.match(/#(\d+)/);
       lastCommit = {
-        sha: c.sha.slice(0, 7),
+        sha: c.sha,
         message: c.commit.message.split("\n")[0],
         author: c.author?.login || c.commit.author?.name || "Unknown",
         date: c.commit.author?.date || "",
@@ -596,14 +701,18 @@ export class GitHubClient {
     const cleanPath = path.replace(/^\//, "");
     const file = await this.getFileContents(repoInput, cleanPath);
     const lines = file.content.split("\n");
-    const commits = await this.request<any[]>(
+    const commits = await this.request<unknown[]>(
       `/repos/${owner}/${repo}/commits?path=${cleanPath}&per_page=5`,
     ).catch(() => []);
 
     const targetLine = lineNumber ? Math.min(lineNumber, lines.length) : 1;
-    const commit = commits[0] || {
+    const commit = (commits[0] || {
       sha: "unknown",
       commit: { message: "Initial commit", author: { name: "Author", date: "" } },
+    }) as {
+      sha: string;
+      commit: { message: string; author?: { name?: string; date?: string } };
+      author?: { login?: string };
     };
     const prMatch = commit.commit.message.match(/#(\d+)/);
 
@@ -623,8 +732,17 @@ export class GitHubClient {
   // 5. GITHUB INVESTIGATION
   async investigateIssue(repoInput: string, issueNumber: number): Promise<InvestigationTimeline> {
     const { owner, repo } = this.parseRepoInput(repoInput);
-    const issue = await this.request<any>(`/repos/${owner}/${repo}/issues/${issueNumber}`);
-    const eventsRaw = await this.request<any[]>(
+    const issue = (await this.request<unknown>(
+      `/repos/${owner}/${repo}/issues/${issueNumber}`,
+    )) as {
+      number: number;
+      title: string;
+      body: string | null;
+      created_at: string;
+      html_url: string;
+      user: { login: string } | null;
+    };
+    const eventsRaw = await this.request<unknown[]>(
       `/repos/${owner}/${repo}/issues/${issueNumber}/events`,
     ).catch(() => []);
 
@@ -642,23 +760,29 @@ export class GitHubClient {
 
     let stepCounter = 2;
     for (const ev of eventsRaw) {
-      if (ev.event === "referenced" && ev.commit_id) {
+      const event = ev as {
+        event: string;
+        commit_id: string | null;
+        actor: { login: string } | null;
+        created_at: string;
+      };
+      if (event.event === "referenced" && event.commit_id) {
         events.push({
           step: stepCounter++,
           type: "commit",
-          title: `Commit ${ev.commit_id.slice(0, 7)} Referencing Issue`,
+          title: `Commit ${event.commit_id.slice(0, 7)} Referencing Issue`,
           description: "Commit linked to issue resolution",
-          actor: ev.actor?.login || "committer",
-          timestamp: ev.created_at,
+          actor: event.actor?.login || "committer",
+          timestamp: event.created_at,
         });
-      } else if (ev.event === "closed") {
+      } else if (event.event === "closed") {
         events.push({
           step: stepCounter++,
           type: "issue_closed",
           title: `Issue Closed`,
           description: "Issue resolved and marked closed",
-          actor: ev.actor?.login || "maintainer",
-          timestamp: ev.created_at,
+          actor: event.actor?.login || "maintainer",
+          timestamp: event.created_at,
         });
       }
     }
@@ -740,17 +864,26 @@ export class GitHubClient {
     const daysCount = [0, 0, 0, 0, 0, 0, 0]; // Sun..Sat
 
     for (const ev of events) {
-      const d = new Date(ev.created_at).getDay();
+      const event = ev as {
+        type: string;
+        created_at: string;
+        payload?: {
+          action?: string;
+          commits?: { length: number }[];
+          pull_request?: { merged: boolean };
+        };
+      };
+      const d = new Date(event.created_at).getDay();
       daysCount[d] = (daysCount[d] || 0) + 1;
 
-      if (ev.type === "PushEvent") {
-        commitsCount += ev.payload?.commits?.length || 1;
-      } else if (ev.type === "PullRequestEvent") {
-        if (ev.payload?.action === "opened") prsOpened++;
-        if (ev.payload?.pull_request?.merged) prsMerged++;
-      } else if (ev.type === "PullRequestReviewEvent") {
+      if (event.type === "PushEvent") {
+        commitsCount += event.payload?.commits?.length || 1;
+      } else if (event.type === "PullRequestEvent") {
+        if (event.payload?.action === "opened") prsOpened++;
+        if (event.payload?.pull_request?.merged) prsMerged++;
+      } else if (event.type === "PullRequestReviewEvent") {
         reviewsCount++;
-      } else if (ev.type === "IssuesEvent" && ev.payload?.action === "closed") {
+      } else if (event.type === "IssuesEvent" && event.payload?.action === "closed") {
         issuesResolved++;
       }
     }
@@ -779,36 +912,60 @@ export class GitHubClient {
   // 7. GITHUB ACTIONS
   async getWorkflows(repoInput: string): Promise<GitHubWorkflow[]> {
     const { owner, repo } = this.parseRepoInput(repoInput);
-    const raw = await this.request<{ workflows: any[] }>(
+    const raw = await this.request<{ workflows: unknown[] }>(
       `/repos/${owner}/${repo}/actions/workflows`,
     ).catch(() => ({ workflows: [] }));
-    return (raw.workflows || []).map((w) => ({
-      id: w.id,
-      name: w.name,
-      path: w.path,
-      state: w.state,
-      htmlUrl: w.html_url,
-    }));
+    return (raw.workflows || []).map((w: unknown) => {
+      const workflow = w as {
+        id: number;
+        name: string;
+        path: string;
+        state: string;
+        html_url: string;
+      };
+      return {
+        id: workflow.id,
+        name: workflow.name,
+        path: workflow.path,
+        state: workflow.state,
+        htmlUrl: workflow.html_url,
+      };
+    }) as GitHubWorkflow[];
   }
 
   async getWorkflowRuns(repoInput: string, limit = 10): Promise<GitHubWorkflowRun[]> {
     const { owner, repo } = this.parseRepoInput(repoInput);
-    const raw = await this.request<{ workflow_runs: any[] }>(
+    const raw = await this.request<{ workflow_runs: unknown[] }>(
       `/repos/${owner}/${repo}/actions/runs?per_page=${limit}`,
     ).catch(() => ({ workflow_runs: [] }));
-    return (raw.workflow_runs || []).map((r) => ({
-      id: r.id,
-      name: r.name || "Workflow Run",
-      headBranch: r.head_branch || "main",
-      headSha: (r.head_sha || "").slice(0, 7),
-      status: r.status,
-      conclusion: r.conclusion,
-      htmlUrl: r.html_url,
-      runNumber: r.run_number,
-      event: r.event,
-      createdAt: r.created_at,
-      updatedAt: r.updated_at,
-    }));
+    return (raw.workflow_runs || []).map((r: unknown) => {
+      const run = r as {
+        id: number;
+        name: string;
+        head_branch: string;
+        head_sha: string;
+        status: string;
+        conclusion: string;
+        html_url: string;
+        run_number: number;
+        event: string;
+        created_at: string;
+        updated_at: string;
+      };
+      return {
+        id: run.id,
+        name: run.name || "Workflow Run",
+        headBranch: run.head_branch || "main",
+        headSha: (run.head_sha || "").slice(0, 7),
+        status: run.status,
+        conclusion: run.conclusion,
+        htmlUrl: run.html_url,
+        runNumber: run.run_number,
+        event: run.event,
+        createdAt: run.created_at,
+        updatedAt: run.updated_at,
+      };
+    }) as GitHubWorkflowRun[];
   }
 
   async rerunWorkflow(repoInput: string, runId: number, userToken?: string): Promise<boolean> {
@@ -832,24 +989,40 @@ export class GitHubClient {
   // 8. SECURITY
   async getSecurityAdvisories(repoInput: string): Promise<GitHubSecurityAdvisory[]> {
     const { owner, repo } = this.parseRepoInput(repoInput);
-    const raw = await this.request<any[]>(`/repos/${owner}/${repo}/security-advisories`).catch(
+    const raw = await this.request<unknown[]>(`/repos/${owner}/${repo}/security-advisories`).catch(
       () => [],
     );
-    return raw.map((a) => ({
-      ghsaId: a.ghsa_id,
-      cveId: a.cve_id,
-      summary: a.summary,
-      description: a.description,
-      severity: a.severity,
-      package: {
-        name: a.vulnerabilities?.[0]?.package?.name || repo,
-        ecosystem: a.vulnerabilities?.[0]?.package?.ecosystem || "npm",
-      },
-      vulnerableVersionRange: a.vulnerabilities?.[0]?.vulnerable_version_range || "*",
-      patchedVersion: a.vulnerabilities?.[0]?.patched_versions || null,
-      publishedAt: a.published_at,
-      htmlUrl: a.html_url,
-    }));
+    return raw.map((a) => {
+      const advisory = a as {
+        ghsa_id: string;
+        cve_id: string | null;
+        summary: string;
+        description: string;
+        severity: string;
+        vulnerabilities?: {
+          package?: { name?: string; ecosystem?: string };
+          vulnerable_version_range?: string;
+          patched_versions?: string;
+        }[];
+        published_at: string;
+        html_url: string;
+      };
+      return {
+        ghsaId: advisory.ghsa_id,
+        cveId: advisory.cve_id,
+        summary: advisory.summary,
+        description: advisory.description,
+        severity: advisory.severity as "critical" | "high" | "medium" | "low",
+        package: {
+          name: advisory.vulnerabilities?.[0]?.package?.name || repo,
+          ecosystem: advisory.vulnerabilities?.[0]?.package?.ecosystem || "npm",
+        },
+        vulnerableVersionRange: advisory.vulnerabilities?.[0]?.vulnerable_version_range || "*",
+        patchedVersion: advisory.vulnerabilities?.[0]?.patched_versions || null,
+        publishedAt: advisory.published_at,
+        htmlUrl: advisory.html_url,
+      };
+    });
   }
 
   // 9. RELEASE MANAGEMENT
@@ -859,9 +1032,21 @@ export class GitHubClient {
     head: string,
   ): Promise<{ aheadBy: number; behindBy: number; totalCommits: number; commits: GitHubCommit[] }> {
     const { owner, repo } = this.parseRepoInput(repoInput);
-    const raw = await this.request<any>(`/repos/${owner}/${repo}/compare/${base}...${head}`);
-    const commits = (raw.commits || []).map((c: any) => ({
-      sha: c.sha.slice(0, 7),
+    const raw = (await this.request<unknown>(
+      `/repos/${owner}/${repo}/compare/${base}...${head}`,
+    )) as {
+      commits: {
+        sha: string;
+        commit: { message: string; author?: { name?: string; date?: string } };
+        author?: { login?: string };
+        html_url: string;
+      }[];
+      ahead_by: number;
+      behind_by: number;
+      total_commits: number;
+    };
+    const commits = (raw.commits || []).map((c) => ({
+      sha: c.sha,
       message: c.commit.message,
       author: {
         name: c.commit.author?.name || "Unknown",
@@ -987,17 +1172,27 @@ export class GitHubClient {
     return getOrSet(
       cacheKey,
       async () => {
-        const raw = await this.request<any[]>(`/repos/${owner}/${repo}/commits?per_page=${limit}`);
-        return raw.map((c) => ({
-          sha: c.sha.slice(0, 7),
-          message: c.commit.message,
-          author: {
-            name: c.commit.author?.name || "Unknown",
-            login: c.author?.login,
-            date: c.commit.author?.date || new Date().toISOString(),
-          },
-          htmlUrl: c.html_url,
-        }));
+        const raw = await this.request<unknown[]>(
+          `/repos/${owner}/${repo}/commits?per_page=${limit}`,
+        );
+        return raw.map((c) => {
+          const commit = c as {
+            sha: string;
+            commit: { message: string; author?: { name?: string; date?: string } };
+            author?: { login?: string };
+            html_url: string;
+          };
+          return {
+            sha: commit.sha,
+            message: commit.commit.message,
+            author: {
+              name: commit.commit.author?.name || "Unknown",
+              login: commit.author?.login,
+              date: commit.commit.author?.date || new Date().toISOString(),
+            },
+            htmlUrl: commit.html_url,
+          };
+        });
       },
       300,
       cache,
@@ -1015,26 +1210,39 @@ export class GitHubClient {
     return getOrSet(
       cacheKey,
       async () => {
-        const raw = await this.request<any[]>(
+        const raw = await this.request<unknown[]>(
           `/repos/${owner}/${repo}/issues?state=${state}&per_page=${limit}&sort=updated&direction=desc`,
         );
         return raw
-          .filter((item) => !item.pull_request)
-          .map((issue) => ({
-            id: issue.id,
-            number: issue.number,
-            title: issue.title,
-            state: issue.state,
-            htmlUrl: issue.html_url,
-            createdAt: issue.created_at,
-            closedAt: issue.closed_at,
-            author: {
-              login: issue.user?.login || "ghost",
-              avatarUrl: issue.user?.avatar_url || "",
-            },
-            commentsCount: issue.comments || 0,
-            isPullRequest: false,
-          }));
+          .filter((item) => !(item as { pull_request?: unknown }).pull_request)
+          .map((issue) => {
+            const i = issue as {
+              id: number;
+              number: number;
+              title: string;
+              state: string;
+              html_url: string;
+              created_at: string;
+              closed_at: string | null;
+              user: { login: string; avatar_url: string } | null;
+              comments: number;
+            };
+            return {
+              id: i.id,
+              number: i.number,
+              title: i.title,
+              state: i.state as "open" | "closed",
+              htmlUrl: i.html_url,
+              createdAt: i.created_at,
+              closedAt: i.closed_at,
+              author: {
+                login: i.user?.login || "ghost",
+                avatarUrl: i.user?.avatar_url || "",
+              },
+              commentsCount: i.comments || 0,
+              isPullRequest: false,
+            };
+          });
       },
       300,
       cache,
@@ -1043,12 +1251,25 @@ export class GitHubClient {
 
   async getSingleIssue(repoInput: string, issueNumber: number): Promise<GitHubDetailedIssue> {
     const { owner, repo } = this.parseRepoInput(repoInput);
-    const raw = await this.request<any>(`/repos/${owner}/${repo}/issues/${issueNumber}`);
+    const raw = (await this.request<unknown>(`/repos/${owner}/${repo}/issues/${issueNumber}`)) as {
+      id: number;
+      number: number;
+      title: string;
+      state: string;
+      html_url: string;
+      created_at: string;
+      closed_at: string | null;
+      user: { login: string; avatar_url: string } | null;
+      comments: number;
+      pull_request?: unknown;
+      body: string | null;
+      labels: ({ name: string } | string)[];
+    };
     return {
       id: raw.id,
       number: raw.number,
       title: raw.title,
-      state: raw.state,
+      state: raw.state as "open" | "closed",
       htmlUrl: raw.html_url,
       createdAt: raw.created_at,
       closedAt: raw.closed_at,
@@ -1059,7 +1280,9 @@ export class GitHubClient {
       commentsCount: raw.comments || 0,
       isPullRequest: Boolean(raw.pull_request),
       body: raw.body || "",
-      labels: (raw.labels || []).map((l: any) => (typeof l === "string" ? l : l.name || "")),
+      labels: (raw.labels || []).map((l: unknown) =>
+        typeof l === "string" ? l : (l as { name: string }).name || "",
+      ),
     };
   }
 
@@ -1070,15 +1293,23 @@ export class GitHubClient {
     return getOrSet(
       cacheKey,
       async () => {
-        const raw = await this.request<any[]>(
+        const raw = await this.request<unknown[]>(
           `/repos/${owner}/${repo}/contributors?per_page=${limit}`,
         );
-        return raw.map((c) => ({
-          login: c.login,
-          avatarUrl: c.avatar_url,
-          htmlUrl: c.html_url,
-          contributions: c.contributions,
-        }));
+        return raw.map((c) => {
+          const contributor = c as {
+            login: string;
+            avatar_url: string;
+            html_url: string;
+            contributions: number;
+          };
+          return {
+            login: contributor.login,
+            avatarUrl: contributor.avatar_url,
+            htmlUrl: contributor.html_url,
+            contributions: contributor.contributions,
+          };
+        });
       },
       1800,
       cache,
@@ -1092,16 +1323,29 @@ export class GitHubClient {
     return getOrSet(
       cacheKey,
       async () => {
-        const raw = await this.request<any[]>(`/repos/${owner}/${repo}/releases?per_page=${limit}`);
-        return raw.map((r) => ({
-          id: r.id,
-          tagName: r.tag_name,
-          name: r.name || r.tag_name,
-          publishedAt: r.published_at,
-          htmlUrl: r.html_url,
-          body: r.body || "",
-          prerelease: r.prerelease || false,
-        }));
+        const raw = await this.request<unknown[]>(
+          `/repos/${owner}/${repo}/releases?per_page=${limit}`,
+        );
+        return raw.map((r) => {
+          const release = r as {
+            id: number;
+            tag_name: string;
+            name: string | null;
+            published_at: string;
+            html_url: string;
+            body: string | null;
+            prerelease: boolean;
+          };
+          return {
+            id: release.id,
+            tagName: release.tag_name,
+            name: release.name || release.tag_name,
+            publishedAt: release.published_at,
+            htmlUrl: release.html_url,
+            body: release.body || "",
+            prerelease: release.prerelease || false,
+          };
+        });
       },
       1800,
       cache,
@@ -1115,7 +1359,17 @@ export class GitHubClient {
     return getOrSet(
       cacheKey,
       async () => {
-        const raw = await this.request<any>(`/users/${cleanUser}`);
+        const raw = (await this.request<unknown>(`/users/${cleanUser}`)) as {
+          login: string;
+          name: string | null;
+          avatar_url: string;
+          html_url: string;
+          bio: string | null;
+          public_repos: number;
+          followers: number;
+          following: number;
+          created_at: string;
+        };
         return {
           login: raw.login,
           name: raw.name,
@@ -1133,14 +1387,14 @@ export class GitHubClient {
     );
   }
 
-  async getUserEvents(username: string, limit = 50): Promise<any[]> {
+  async getUserEvents(username: string, limit = 50): Promise<unknown[]> {
     const cleanUser = username.replace(/^@/, "").trim();
     const cacheKey = `gh:events:${cleanUser.toLowerCase()}:${limit}`;
 
     return getOrSet(
       cacheKey,
       async () => {
-        return this.request<any[]>(`/users/${cleanUser}/events?per_page=${limit}`);
+        return this.request<unknown[]>(`/users/${cleanUser}/events?per_page=${limit}`);
       },
       300,
       cache,

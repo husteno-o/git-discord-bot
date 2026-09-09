@@ -64,15 +64,28 @@ export class AlgoliaHnNewsProvider implements NewsProvider {
     });
 
     if (!response.ok) {
-      throw new Error(`Algolia HN API error: ${response.statusText}`);
+      throw new Error(`Failed to fetch Hacker News articles from Algolia: ${response.statusText}`);
     }
 
-    const data = (await response.json()) as any;
+    interface HnHit {
+      objectID: string;
+      title: string;
+      url?: string;
+      story_url?: string;
+      created_at: string;
+      story_text?: string;
+      points?: number;
+      num_comments?: number;
+    }
+    interface HnResponse {
+      hits: HnHit[];
+    }
+    const data = (await response.json()) as HnResponse;
     const hits = data.hits || [];
 
     return hits
-      .filter((h: any) => h.title && (h.url || h.story_url))
-      .map((h: any) => {
+      .filter((h) => h.title && (h.url || h.story_url))
+      .map((h) => {
         const itemUrl =
           h.url || h.story_url || `https://news.ycombinator.com/item?id=${h.objectID}`;
         const domain = (() => {
@@ -130,10 +143,17 @@ export class DevToNewsProvider implements NewsProvider {
     });
 
     if (!response.ok) {
-      throw new Error(`Dev.to API error: ${response.statusText}`);
+      throw new Error(`Failed to fetch Dev.to articles: ${response.statusText}`);
     }
 
-    const data = (await response.json()) as any[];
+    interface DevToArticle {
+      id: number;
+      title: string;
+      url: string;
+      published_at: string;
+      description: string;
+    }
+    const data = (await response.json()) as DevToArticle[];
 
     return data.map((art) => ({
       id: `devto-${art.id}`,
@@ -163,7 +183,7 @@ export class NewsService {
             if (items && items.length > 0) {
               return items;
             }
-          } catch (err) {
+          } catch (err: unknown) {
             logger.warn(
               { err, provider: provider.name },
               "News provider failed, trying next provider",

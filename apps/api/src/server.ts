@@ -5,7 +5,24 @@ import { db, users } from "@devpulse/database";
 import { logger } from "@devpulse/logger";
 import { encryptSecret } from "@devpulse/security";
 import { eq, sql } from "drizzle-orm";
-import Fastify, { type FastifyInstance } from "fastify";
+import Fastify, { type FastifyBaseLogger, type FastifyInstance } from "fastify";
+
+const RATE_LIMIT_WINDOW = 60;
+const RATE_LIMIT_MAX = 100;
+
+async function rateLimitHook(
+  req: { ip: string },
+  reply: { status: (code: number) => { send: (body: unknown) => void } },
+) {
+  const key = `ratelimit:api:${req.ip}`;
+  const result = await cache.checkRateLimit(key, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW);
+  if (!result.allowed) {
+    reply.status(429).send({
+      error: "Too Many Requests",
+      retryAfter: result.resetSeconds,
+    });
+  }
+}
 
 export interface ServerOptions {
   discordClient?: {
@@ -16,10 +33,16 @@ export interface ServerOptions {
   };
 }
 
+/**
+ * Builds and configures the Fastify HTTP server with health, readiness,
+ * metrics, and GitHub OAuth endpoints. Includes rate limiting.
+ */
 export function buildServer(options?: ServerOptions): FastifyInstance {
   const server = Fastify({
-    loggerInstance: logger as any,
+    loggerInstance: logger as FastifyBaseLogger,
   });
+
+  server.addHook("onRequest", rateLimitHook);
 
   server.get("/health", async () => {
     const memory = process.memoryUsage();
@@ -67,11 +90,11 @@ export function buildServer(options?: ServerOptions): FastifyInstance {
           : {}),
         timestamp: new Date().toISOString(),
       };
-    } catch (err: any) {
+    } catch (err: unknown) {
       logger.error({ err }, "Readiness check failed");
       return reply.status(503).send({
         status: "unready",
-        error: err.message,
+        error: err instanceof Error ? err.message : String(err),
       });
     }
   });
@@ -222,12 +245,14 @@ export function buildServer(options?: ServerOptions): FastifyInstance {
         </body>
         </html>
       `);
-    } catch (err: any) {
+    } catch (err: unknown) {
       logger.error({ err }, "GitHub OAuth exchange failed");
       return reply
         .status(500)
         .type("text/html")
-        .send(`<h1>Internal Server Error</h1><p>${err.message}</p>`);
+        .send(
+          `<h1>Internal Server Error</h1><p>${err instanceof Error ? err.message : String(err)}</p>`,
+        );
     }
   });
 

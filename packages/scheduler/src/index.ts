@@ -2,7 +2,7 @@ import { cache } from "@devpulse/cache";
 import { NotFoundError } from "@devpulse/core";
 import { db, reminders } from "@devpulse/database";
 import { logger } from "@devpulse/logger";
-import { monitoringService } from "@devpulse/monitoring";
+import { type MonitorCheckOutcome, monitoringService } from "@devpulse/monitoring";
 import cronParser from "cron-parser";
 import { and, desc, eq, lte } from "drizzle-orm";
 
@@ -97,13 +97,17 @@ export class ReminderService {
   async processReminderCompletion(reminder: DueReminder) {
     if (reminder.isRecurring && reminder.cronExpression) {
       try {
-        const p: any = cronParser;
-        const parseFn = p.parseExpression || p.default?.parseExpression;
+        interface CronParserModule {
+          parseExpression: (expr: string) => { next: () => { toDate: () => Date } };
+          default?: { parseExpression: (expr: string) => { next: () => { toDate: () => Date } } };
+        }
+        const mod = cronParser as CronParserModule;
+        const parseFn = mod.parseExpression || mod.default?.parseExpression;
         const interval = parseFn(reminder.cronExpression);
         const nextDue = interval.next().toDate();
         await db.update(reminders).set({ dueAt: nextDue }).where(eq(reminders.id, reminder.id));
         return;
-      } catch (err) {
+      } catch (err: unknown) {
         logger.error(
           { err, reminderId: reminder.id },
           "Failed to calculate next recurring cron time",
@@ -121,13 +125,13 @@ export class SchedulerRunner {
   private timer: NodeJS.Timeout | null = null;
   private isRunning = false;
   private onReminderDue?: (reminder: DueReminder) => Promise<void>;
-  private onMonitorAlert?: (outcome: any) => Promise<void>;
+  private onMonitorAlert?: (outcome: MonitorCheckOutcome) => Promise<void>;
 
   setReminderHandler(handler: (reminder: DueReminder) => Promise<void>) {
     this.onReminderDue = handler;
   }
 
-  setMonitorAlertHandler(handler: (outcome: any) => Promise<void>) {
+  setMonitorAlertHandler(handler: (outcome: MonitorCheckOutcome) => Promise<void>) {
     this.onMonitorAlert = handler;
   }
 
@@ -139,6 +143,7 @@ export class SchedulerRunner {
     this.timer = setInterval(async () => {
       await this.tick();
     }, intervalMs);
+    this.timer.unref?.();
 
     // Initial immediate tick
     this.tick().catch((err) => logger.error({ err }, "Initial scheduler tick failed"));
@@ -165,7 +170,7 @@ export class SchedulerRunner {
               await this.onReminderDue(rem);
             }
             await reminderService.processReminderCompletion(rem);
-          } catch (err) {
+          } catch (err: unknown) {
             logger.error({ err, reminderId: rem.id }, "Error delivering reminder");
           }
         }
@@ -182,7 +187,7 @@ export class SchedulerRunner {
           await this.onMonitorAlert(o);
         }
       }
-    } catch (err) {
+    } catch (err: unknown) {
       logger.error({ err }, "Error running scheduled monitor checks");
     }
   }

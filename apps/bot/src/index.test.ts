@@ -4,10 +4,11 @@ import { createBotClient } from "./index.js";
 
 describe("Discord Bot Application", () => {
   it("registers all GitHub Power-User command groups", () => {
-    expect(commands.length).toBe(20);
+    expect(commands.length).toBe(21);
     expect(commandMap.has("repo")).toBe(true);
     expect(commandMap.has("pr")).toBe(true);
     expect(commandMap.has("ai")).toBe(true);
+    expect(commandMap.has("code-review")).toBe(true);
     expect(commandMap.has("search")).toBe(true);
     expect(commandMap.has("code")).toBe(true);
     expect(commandMap.has("investigate")).toBe(true);
