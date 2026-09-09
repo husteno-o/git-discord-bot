@@ -1,10 +1,10 @@
-// DevPulse Interactive Landing Page Controller (Strictly SVG Icons, Zero Emojis)
-import { icons } from "./icons.js";
+// DevPulse Landing Page Controller
+// Uses Lucide icons (loaded via CDN in HTML)
 
-export interface SimState {
+interface SimState {
   activeTab: string;
   prStatus: "open" | "approved" | "changes_requested" | "merged";
-  repoTab: "overview" | "commits" | "prs" | "issues" | "releases";
+  repoTab: string;
 }
 
 const state: SimState = {
@@ -13,388 +13,526 @@ const state: SimState = {
   repoTab: "overview",
 };
 
-// Clipboard copy helper with animated SVG checkmark
-export function copyText(text: string, triggerBtn?: HTMLElement) {
-  navigator.clipboard.writeText(text).then(() => {
-    if (triggerBtn) {
-      const originalHtml = triggerBtn.innerHTML;
-      triggerBtn.innerHTML = `
-        ${icons.check(14, "#3fb950")}
-        <span style="color: #3fb950; font-weight: 600;">Copied</span>
-      `;
-      setTimeout(() => {
-        triggerBtn.innerHTML = originalHtml;
-      }, 2200);
-    }
-  });
+// All 21 commands data
+const commands = [
+  {
+    name: "/repo",
+    desc: "Repository intelligence, health score, dependencies, growth",
+    icon: "book-open",
+    color: "gh-blue",
+  },
+  {
+    name: "/pr",
+    desc: "PR details, CI status, approve, request changes, merge",
+    icon: "git-pull-request",
+    color: "gh-green",
+  },
+  {
+    name: "/search",
+    desc: "Search code, issues, PRs, repos, commits with qualifiers",
+    icon: "search",
+    color: "gh-purple",
+  },
+  {
+    name: "/code",
+    desc: "View files, git blame, commit-to-PR resolution",
+    icon: "code",
+    color: "gh-blue",
+  },
+  {
+    name: "/investigate",
+    desc: "Full lifecycle: issue → commit → PR → review → merge → release",
+    icon: "git-merge",
+    color: "gh-purple",
+  },
+  {
+    name: "/activity",
+    desc: "Commit histograms, churn analysis, personal telemetry",
+    icon: "bar-chart-2",
+    color: "gh-green",
+  },
+  {
+    name: "/trending",
+    desc: "Trending repos across TypeScript, Rust, AI/ML, Go, Python",
+    icon: "trending-up",
+    color: "gh-amber",
+  },
+  {
+    name: "/watch",
+    desc: "Subscribe channels to releases, PRs, issues, security alerts",
+    icon: "bell",
+    color: "gh-blue",
+  },
+  {
+    name: "/actions",
+    desc: "CI/CD workflow trees, run history, rerun/cancel controls",
+    icon: "play-circle",
+    color: "gh-green",
+  },
+  {
+    name: "/security",
+    desc: "Dependabot alerts, CVE lookup, real-time secret scanner",
+    icon: "shield-check",
+    color: "gh-coral",
+  },
+  {
+    name: "/release",
+    desc: "Latest releases, tag comparison, auto changelog generator",
+    icon: "tag",
+    color: "gh-purple",
+  },
+  {
+    name: "/team",
+    desc: "Team velocity, cycle times, review load balancing",
+    icon: "users",
+    color: "gh-blue",
+  },
+  {
+    name: "/home",
+    desc: "Morning cockpit: active PRs, reviews, alerts, trending",
+    icon: "home",
+    color: "gh-green",
+  },
+  {
+    name: "/connect",
+    desc: "AES-256-GCM encrypted PAT storage for write actions",
+    icon: "link",
+    color: "gh-blue",
+  },
+  {
+    name: "/why",
+    desc: "Trace file/line → commit → PR → originating issue",
+    icon: "help-circle",
+    color: "gh-purple",
+  },
+  {
+    name: "/ask",
+    desc: "Query engine: stale PRs, bottlenecks, frequent files",
+    icon: "message-circle",
+    color: "gh-green",
+  },
+  {
+    name: "/tools",
+    desc: "JSON formatter, base64, JWT inspector, hash, timestamps",
+    icon: "wrench",
+    color: "gh-amber",
+  },
+  {
+    name: "/settings",
+    desc: "Server config: repos, channels, access controls",
+    icon: "settings",
+    color: "gh-blue",
+  },
+  {
+    name: "/help",
+    desc: "Interactive command directory with examples",
+    icon: "info",
+    color: "gh-green",
+  },
+  {
+    name: "/ai",
+    desc: "AI code explanations, PR summaries, bug fix suggestions",
+    icon: "brain",
+    color: "gh-coral",
+  },
+  {
+    name: "/code-review",
+    desc: "Automated PR review: security, performance, style",
+    icon: "eye",
+    color: "gh-purple",
+  },
+];
+
+// Initialize everything
+document.addEventListener("DOMContentLoaded", () => {
+  // Initialize Lucide icons
+  if (typeof lucide !== "undefined") {
+    lucide.createIcons();
+  }
+
+  // Build commands grid
+  buildCommandsGrid();
+
+  // Initialize simulator
+  initSimulator();
+
+  // Initialize navbar
+  initNavbar();
+
+  // Initialize mobile menu
+  initMobileMenu();
+
+  // Initialize copy buttons
+  initCopyButtons();
+
+  // Initialize scroll effects
+  initScrollEffects();
+});
+
+// Build the 21 commands grid
+function buildCommandsGrid() {
+  const grid = document.getElementById("commands-grid");
+  if (!grid) return;
+
+  grid.innerHTML = commands
+    .map(
+      (cmd) => `
+    <div class="command-card group p-4 rounded-xl bg-bg-surface border border-border hover:border-${cmd.color}/30 cursor-default">
+      <div class="flex items-start gap-3">
+        <div class="w-9 h-9 rounded-lg bg-${cmd.color}/10 border border-${cmd.color}/20 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform duration-200">
+          <i data-lucide="${cmd.icon}" class="w-4 h-4 text-${cmd.color}"></i>
+        </div>
+        <div class="min-w-0">
+          <div class="flex items-center gap-2 mb-1">
+            <span class="text-sm font-mono font-semibold text-${cmd.color}">${cmd.name}</span>
+          </div>
+          <p class="text-xs text-text-secondary leading-relaxed">${cmd.desc}</p>
+        </div>
+      </div>
+    </div>
+  `,
+    )
+    .join("");
+
+  // Re-initialize icons for new elements
+  if (typeof lucide !== "undefined") {
+    lucide.createIcons();
+  }
 }
 
-// Simulator views
-const tabTemplates: Record<string, () => string> = {
-  pr: () => {
-    let statusBadge = `<span class="status-tag status-tag-green">${icons.checkCircle(14, "#3fb950")} Ready to merge</span>`;
-    let mergeButtonHtml = `<button class="discord-btn discord-btn-primary" id="sim-btn-merge">${icons.gitMerge(14, "#ffffff")} Merge into main</button>`;
+// Simulator
+function initSimulator() {
+  renderSimulator();
+  attachSimulatorEvents();
+}
 
-    if (state.prStatus === "approved") {
-      statusBadge = `<span class="status-tag status-tag-green">${icons.checkCircle(14, "#3fb950")} Approved by you</span>`;
-    } else if (state.prStatus === "changes_requested") {
-      statusBadge = `<span class="status-tag" style="background: rgba(248,81,73,0.15); color: #f85149; border: 1px solid rgba(248,81,73,0.3)">${icons.alertTriangle(14, "#f85149")} Changes Requested</span>`;
-    } else if (state.prStatus === "merged") {
-      statusBadge = `<span class="status-tag status-tag-purple">${icons.gitMerge(14, "#a371f7")} Merged into main (commit #9a8f2c)</span>`;
-      mergeButtonHtml = `<button class="discord-btn discord-btn-disabled" disabled>${icons.gitMerge(14, "#8b949e")} Merged</button>`;
-    }
-
-    return `
-      <div class="discord-message">
-        <div class="discord-avatar">
-          ${icons.gitPullRequest(22, "#ffffff")}
-        </div>
-        <div class="discord-content">
-          <div class="discord-header">
-            <span class="bot-name">DevPulse</span>
-            <span class="bot-tag">BOT</span>
-            <span class="message-time">Today at 10:42 AM</span>
-          </div>
-          <div class="command-echo">/pr 142 repo:vercel/next.js</div>
-          <div class="discord-embed" style="border-left-color: ${state.prStatus === "merged" ? "#a371f7" : "#2ea043"}">
-            <div class="embed-author">
-              <span>vercel/next.js</span>
-              <span>&bull;</span>
-              <span>Pull Request #142</span>
-            </div>
-            <div class="embed-title">
-              feat(router): optimize parallel route cache hydration
-            </div>
-            <div class="embed-desc">
-              ${statusBadge}
-              Author: <strong>@timneutkens</strong> &bull; Target: <code>canary &larr; feature/route-cache</code>
-              Files Changed: <strong>14</strong> &bull; <span style="color: #3fb950">+482</span> <span style="color: #f85149">&minus;193</span>
-            </div>
-            <div class="embed-grid">
-              <div>
-                <div class="embed-field-name">CI Status</div>
-                <div class="embed-field-value">${icons.checkCircle(14, "#3fb950")} 12/12 Checks Passing</div>
-              </div>
-              <div>
-                <div class="embed-field-name">Reviews</div>
-                <div class="embed-field-value">${state.prStatus === "approved" ? "3/2 (Required met)" : "2/2 (Required met)"}</div>
-              </div>
-              <div>
-                <div class="embed-field-name">Merge Conflicts</div>
-                <div class="embed-field-value">None (Clean merge)</div>
-              </div>
-              <div>
-                <div class="embed-field-name">Cycle Time</div>
-                <div class="embed-field-value">1d 4h 12m</div>
-              </div>
-            </div>
-            <div class="discord-action-row">
-              <button class="discord-btn discord-btn-success" id="sim-btn-approve">${icons.check(14, "#ffffff")} Approve</button>
-              <button class="discord-btn discord-btn-danger" id="sim-btn-changes">${icons.x(14, "#ffffff")} Request Changes</button>
-              ${mergeButtonHtml}
-              <button class="discord-btn" onclick="window.open('https://github.com', '_blank')">Open GitHub ${icons.externalLink(12, "#ffffff")}</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
-  },
-
-  repo: () => {
-    return `
-      <div class="discord-message">
-        <div class="discord-avatar">
-          ${icons.repo(22, "#ffffff")}
-        </div>
-        <div class="discord-content">
-          <div class="discord-header">
-            <span class="bot-name">DevPulse</span>
-            <span class="bot-tag">BOT</span>
-            <span class="message-time">Today at 10:45 AM</span>
-          </div>
-          <div class="command-echo">/repo name:vercel/next.js</div>
-          <div class="discord-embed" style="border-left-color: #58a6ff">
-            <div class="embed-author">Repository Intelligence</div>
-            <div class="embed-title">vercel/next.js</div>
-            <div class="embed-desc">
-              The React Framework for the Web. Used by production engineering teams worldwide.
-              <strong>Health Score: 96 / 100</strong> [■■■■■■■■■□]
-            </div>
-            <div class="embed-grid">
-              <div>
-                <div class="embed-field-name">Stars &amp; Forks</div>
-                <div class="embed-field-value">${icons.star(14, "#e3b341")} 124,510 &bull; ${icons.repoForked(14, "#8b949e")} 26,840</div>
-              </div>
-              <div>
-                <div class="embed-field-name">Open Issues / PRs</div>
-                <div class="embed-field-value">Issues: 412 &bull; PRs: 89</div>
-              </div>
-              <div>
-                <div class="embed-field-name">License / Branch</div>
-                <div class="embed-field-value">MIT &bull; canary</div>
-              </div>
-              <div>
-                <div class="embed-field-name">30-Day Velocity</div>
-                <div class="embed-field-value"><span style="color:#3fb950">+1,840 stars</span> (+1.5%)</div>
-              </div>
-            </div>
-            <div class="discord-action-row">
-              <button class="discord-btn ${state.repoTab === "overview" ? "discord-btn-primary" : ""}" id="sim-repo-overview">Overview</button>
-              <button class="discord-btn ${state.repoTab === "commits" ? "discord-btn-primary" : ""}" id="sim-repo-commits">Commits</button>
-              <button class="discord-btn ${state.repoTab === "prs" ? "discord-btn-primary" : ""}" id="sim-repo-prs">PRs (89)</button>
-              <button class="discord-btn ${state.repoTab === "issues" ? "discord-btn-primary" : ""}" id="sim-repo-issues">Issues (412)</button>
-              <button class="discord-btn ${state.repoTab === "releases" ? "discord-btn-primary" : ""}" id="sim-repo-releases">Releases (v15.2.0)</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
-  },
-
-  actions: () => {
-    return `
-      <div class="discord-message">
-        <div class="discord-avatar">
-          ${icons.actions(22, "#ffffff")}
-        </div>
-        <div class="discord-content">
-          <div class="discord-header">
-            <span class="bot-name">DevPulse</span>
-            <span class="bot-tag">BOT</span>
-            <span class="message-time">Today at 10:48 AM</span>
-          </div>
-          <div class="command-echo">/actions repo:vercel/next.js branch:canary</div>
-          <div class="discord-embed" style="border-left-color: #2ea043">
-            <div class="embed-author">GitHub Actions CI/CD Pipeline</div>
-            <div class="embed-title">canary &bull; Run #4,892 Passed</div>
-            <div class="embed-desc">Triggered by <strong>@leerob</strong> via push on commit <code>3a91e4f</code></div>
-            <div class="embed-code-block">canary (commit 3a91e4f)
-|-- Unit Tests (Node 20 & 22)   [Passing] (1m 42s)
-|-- Turbopack Integration E2E   [Passing] (4m 15s)
-|-- Edge Runtime Compatibility  [Passing] (52s)
-|-- Security Scanning & Audit   [Passing] (38s)
-\\-- Production Bundle Analyzer  [Passing] (1m 04s)</div>
-            <div class="discord-action-row">
-              <button class="discord-btn" id="sim-btn-rerun">${icons.sync(14, "#ffffff")} Rerun All Jobs</button>
-              <button class="discord-btn discord-btn-danger" id="sim-btn-cancel" disabled>Cancel</button>
-              <button class="discord-btn" onclick="window.open('https://github.com', '_blank')">View Workflow Run ${icons.externalLink(12, "#ffffff")}</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
-  },
-
-  investigate: () => {
-    return `
-      <div class="discord-message">
-        <div class="discord-avatar">
-          ${icons.investigate(22, "#ffffff")}
-        </div>
-        <div class="discord-content">
-          <div class="discord-header">
-            <span class="bot-name">DevPulse</span>
-            <span class="bot-tag">BOT</span>
-            <span class="message-time">Today at 10:50 AM</span>
-          </div>
-          <div class="command-echo">/investigate pr:142 repo:vercel/next.js</div>
-          <div class="discord-embed" style="border-left-color: #a371f7">
-            <div class="embed-author">Lifecycle Investigation Engine</div>
-            <div class="embed-title">Full Development Trace</div>
-            <div class="embed-desc">Chronological lifecycle trace from originating issue to published version:</div>
-            <div class="embed-code-block">1. Issue Created:   #892 "Hydration mismatch in nested parallel routes" by @alex (Sep 1)
-2. Branch Created:  feature/route-cache (Sep 2)
-3. Commit Added:    8f3b12a "fix: reconcile router slot metadata" by @timneutkens
-4. PR Opened:       #142 (Sep 2)
-5. CI Verification: 12 checks passed (Sep 2)
-6. Code Reviews:    Approved by @sokra & @kdy1 (Sep 3)
-7. Merged:          Merged into canary by @timneutkens (Sep 3)
-8. Shipped In:      v15.2.0-canary.18 (Sep 4)</div>
-            <div class="discord-action-row">
-              <button class="discord-btn" id="sim-btn-copy-trace">${icons.copy(14, "#ffffff")} Copy Investigation Summary</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
-  },
-
-  code: () => {
-    return `
-      <div class="discord-message">
-        <div class="discord-avatar">
-          ${icons.code(22, "#ffffff")}
-        </div>
-        <div class="discord-content">
-          <div class="discord-header">
-            <span class="bot-name">DevPulse</span>
-            <span class="bot-tag">BOT</span>
-            <span class="message-time">Today at 10:52 AM</span>
-          </div>
-          <div class="command-echo">/code blame file:packages/next/src/server/route-matcher.ts lines:40-46</div>
-          <div class="discord-embed" style="border-left-color: #58a6ff">
-            <div class="embed-author">Code Blame &amp; Attribution</div>
-            <div class="embed-title">route-matcher.ts (Lines 40-46)</div>
-            <div class="embed-code-block">40 | export function matchRoute(url: string, routes: Route[]): Route | null {
-41 |   // [e71ab82 @timneutkens 3d ago] Fast-path lookup for exact match
-42 |   const exact = exactMap.get(url);
-43 |   if (exact) return exact;
-44 |   // [8f3b12a @sokra 1w ago] Fallback dynamic param evaluator
-45 |   return evaluateRegexRoutes(url, routes);
-46 | }</div>
-            <div class="embed-desc">Commit <code>8f3b12a</code> originated from <strong>PR #138</strong> merged into canary on Aug 28.</div>
-          </div>
-        </div>
-      </div>
-    `;
-  },
-
-  activity: () => {
-    return `
-      <div class="discord-message">
-        <div class="discord-avatar">
-          ${icons.graph(22, "#ffffff")}
-        </div>
-        <div class="discord-content">
-          <div class="discord-header">
-            <span class="bot-name">DevPulse</span>
-            <span class="bot-tag">BOT</span>
-            <span class="message-time">Today at 10:55 AM</span>
-          </div>
-          <div class="command-echo">/activity me days:7</div>
-          <div class="discord-embed" style="border-left-color: #3fb950">
-            <div class="embed-author">Developer Engineering Rhythm</div>
-            <div class="embed-title">Personal Activity Profile (@swadhin)</div>
-            <div class="embed-desc">
-              Total Commits: <strong>48</strong> &bull; PRs Authored: <strong>6</strong> &bull; PRs Reviewed: <strong>14</strong>
-              Weekly Rhythm Histogram:
-            </div>
-            <div class="embed-code-block">Mon [||||||||||||||||] 14
-Tue [||||||||||||    ] 10
-Wed [||||||||        ]  6
-Thu [||||||||||||||  ] 12
-Fri [||||            ]  4
-Sat [|               ]  1
-Sun [|               ]  1</div>
-            <div class="embed-grid">
-              <div>
-                <div class="embed-field-name">Churn Ratio</div>
-                <div class="embed-field-value">+2,140 / &minus;840 (2.5x)</div>
-              </div>
-              <div>
-                <div class="embed-field-name">Average Cycle Time</div>
-                <div class="embed-field-value">18h 40m</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
-  },
-};
-
-export function renderSimulator() {
-  const container = document.getElementById("simulator-render-area");
+function renderSimulator() {
+  const container = document.getElementById("simulator-body");
   if (!container) return;
 
-  const renderer = tabTemplates[state.activeTab];
+  const templates: Record<string, () => string> = {
+    pr: () => renderPREmbed(),
+    repo: () => renderRepoEmbed(),
+    actions: () => renderActionsEmbed(),
+    investigate: () => renderInvestigateEmbed(),
+    code: () => renderCodeEmbed(),
+    activity: () => renderActivityEmbed(),
+  };
+
+  const renderer = templates[state.activeTab];
   if (renderer) {
     container.style.opacity = "0";
-    container.style.transform = "translateX(12px)";
+    container.style.transform = "translateY(8px)";
     container.style.transition = "opacity 0.15s ease, transform 0.15s ease";
 
     requestAnimationFrame(() => {
       container.innerHTML = renderer();
       requestAnimationFrame(() => {
         container.style.opacity = "1";
-        container.style.transform = "translateX(0)";
+        container.style.transform = "translateY(0)";
       });
     });
-
-    attachSimulatorEvents();
   }
+}
+
+function renderPREmbed() {
+  const statusMap = {
+    open: { text: "Ready to merge", color: "gh-green", icon: "check-circle" },
+    approved: { text: "Approved by you", color: "gh-green", icon: "check-circle" },
+    changes_requested: { text: "Changes Requested", color: "gh-coral", icon: "alert-triangle" },
+    merged: { text: "Merged into main", color: "gh-purple", icon: "git-merge" },
+  };
+  const status = statusMap[state.prStatus];
+
+  return `
+    <div class="flex gap-4">
+      <div class="w-10 h-10 rounded-full bg-gradient-to-br from-gh-green to-gh-blue flex items-center justify-center flex-shrink-0">
+        <i data-lucide="git-pull-request" class="w-5 h-5 text-white"></i>
+      </div>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2 mb-1">
+          <span class="font-semibold text-sm">DevPulse</span>
+          <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-discord-blurple text-white uppercase">Bot</span>
+          <span class="text-xs text-text-muted">Today at 10:42 AM</span>
+        </div>
+        <div class="text-xs font-mono text-gh-blue mb-2">/pr 142 repo:vercel/next.js</div>
+        <div class="rounded-lg bg-discord-embed border-l-4 border-${status.color} p-4">
+          <div class="text-xs text-text-secondary mb-1">vercel/next.js • Pull Request #142</div>
+          <div class="text-sm font-semibold mb-2">feat(router): optimize parallel route cache hydration</div>
+          <div class="flex items-center gap-2 mb-3">
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-${status.color}/10 text-${status.color} border border-${status.color}/30">
+              <i data-lucide="${status.icon}" class="w-3 h-3"></i> ${status.text}
+            </span>
+            <span class="text-xs text-text-muted">@timneutkens • 14 files • <span class="text-gh-green">+482</span> <span class="text-gh-coral">-193</span></span>
+          </div>
+          <div class="grid grid-cols-2 gap-3 mb-3">
+            <div>
+              <div class="text-[10px] uppercase text-text-muted font-bold mb-0.5">CI Status</div>
+              <div class="text-xs"><i data-lucide="check-circle" class="w-3 h-3 text-gh-green inline"></i> 12/12 Passing</div>
+            </div>
+            <div>
+              <div class="text-[10px] uppercase text-text-muted font-bold mb-0.5">Reviews</div>
+              <div class="text-xs">${state.prStatus === "approved" ? "3/2" : "2/2"} (Required met)</div>
+            </div>
+          </div>
+          <div class="flex gap-2 flex-wrap">
+            <button id="sim-btn-approve" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-gh-green text-white text-xs font-semibold hover:bg-gh-green-h transition-colors">
+              <i data-lucide="check" class="w-3 h-3"></i> Approve
+            </button>
+            <button id="sim-btn-changes" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-gh-coral text-white text-xs font-semibold hover:opacity-90 transition-colors">
+              <i data-lucide="x" class="w-3 h-3"></i> Request Changes
+            </button>
+            ${
+              state.prStatus === "merged"
+                ? `<button class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-gh-purple/20 text-gh-purple text-xs font-semibold" disabled><i data-lucide="git-merge" class="w-3 h-3"></i> Merged</button>`
+                : `<button id="sim-btn-merge" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-discord-blurple text-white text-xs font-semibold hover:bg-discord-blurple-h transition-colors"><i data-lucide="git-merge" class="w-3 h-3"></i> Merge</button>`
+            }
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderRepoEmbed() {
+  return `
+    <div class="flex gap-4">
+      <div class="w-10 h-10 rounded-full bg-gradient-to-br from-gh-green to-gh-blue flex items-center justify-center flex-shrink-0">
+        <i data-lucide="book-open" class="w-5 h-5 text-white"></i>
+      </div>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2 mb-1">
+          <span class="font-semibold text-sm">DevPulse</span>
+          <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-discord-blurple text-white uppercase">Bot</span>
+          <span class="text-xs text-text-muted">Today at 10:45 AM</span>
+        </div>
+        <div class="text-xs font-mono text-gh-blue mb-2">/repo name:vercel/next.js</div>
+        <div class="rounded-lg bg-discord-embed border-l-4 border-gh-blue p-4">
+          <div class="text-sm font-semibold mb-2">vercel/next.js</div>
+          <div class="text-xs text-text-secondary mb-3">The React Framework for the Web. <strong class="text-text-primary">Health Score: 96/100</strong></div>
+          <div class="grid grid-cols-2 gap-3 mb-3">
+            <div>
+              <div class="text-[10px] uppercase text-text-muted font-bold mb-0.5">Stars & Forks</div>
+              <div class="text-xs flex items-center gap-1"><i data-lucide="star" class="w-3 h-3 text-gh-amber"></i> 124,510 • <i data-lucide="git-fork" class="w-3 h-3"></i> 26,840</div>
+            </div>
+            <div>
+              <div class="text-[10px] uppercase text-text-muted font-bold mb-0.5">Issues / PRs</div>
+              <div class="text-xs">412 / 89</div>
+            </div>
+          </div>
+          <div class="flex gap-2 flex-wrap">
+            <button class="px-3 py-1.5 rounded-md bg-gh-blue text-white text-xs font-semibold">Overview</button>
+            <button class="px-3 py-1.5 rounded-md bg-bg-surface text-text-secondary text-xs font-medium hover:bg-bg-hover transition-colors">Commits</button>
+            <button class="px-3 py-1.5 rounded-md bg-bg-surface text-text-secondary text-xs font-medium hover:bg-bg-hover transition-colors">PRs</button>
+            <button class="px-3 py-1.5 rounded-md bg-bg-surface text-text-secondary text-xs font-medium hover:bg-bg-hover transition-colors">Issues</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderActionsEmbed() {
+  return `
+    <div class="flex gap-4">
+      <div class="w-10 h-10 rounded-full bg-gradient-to-br from-gh-green to-gh-blue flex items-center justify-center flex-shrink-0">
+        <i data-lucide="play-circle" class="w-5 h-5 text-white"></i>
+      </div>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2 mb-1">
+          <span class="font-semibold text-sm">DevPulse</span>
+          <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-discord-blurple text-white uppercase">Bot</span>
+          <span class="text-xs text-text-muted">Today at 10:48 AM</span>
+        </div>
+        <div class="text-xs font-mono text-gh-blue mb-2">/actions repo:vercel/next.js branch:canary</div>
+        <div class="rounded-lg bg-discord-embed border-l-4 border-gh-green p-4">
+          <div class="text-sm font-semibold mb-2">canary • Run #4,892 Passed</div>
+          <div class="font-mono text-xs text-text-secondary space-y-1 mb-3">
+            <div>├── Unit Tests (Node 20 & 22) <span class="text-gh-green">Passing</span> (1m 42s)</div>
+            <div>├── Turbopack Integration E2E <span class="text-gh-green">Passing</span> (4m 15s)</div>
+            <div>├── Edge Runtime Compatibility <span class="text-gh-green">Passing</span> (52s)</div>
+            <div>└── Security Scanning & Audit <span class="text-gh-green">Passing</span> (38s)</div>
+          </div>
+          <div class="flex gap-2">
+            <button id="sim-btn-rerun" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-bg-surface text-text-primary text-xs font-semibold hover:bg-bg-hover transition-colors border border-border">
+              <i data-lucide="refresh-cw" class="w-3 h-3"></i> Rerun All
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderInvestigateEmbed() {
+  return `
+    <div class="flex gap-4">
+      <div class="w-10 h-10 rounded-full bg-gradient-to-br from-gh-purple to-gh-blue flex items-center justify-center flex-shrink-0">
+        <i data-lucide="git-merge" class="w-5 h-5 text-white"></i>
+      </div>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2 mb-1">
+          <span class="font-semibold text-sm">DevPulse</span>
+          <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-discord-blurple text-white uppercase">Bot</span>
+          <span class="text-xs text-text-muted">Today at 10:50 AM</span>
+        </div>
+        <div class="text-xs font-mono text-gh-blue mb-2">/investigate pr:142 repo:vercel/next.js</div>
+        <div class="rounded-lg bg-discord-embed border-l-4 border-gh-purple p-4">
+          <div class="text-sm font-semibold mb-2">Full Development Trace</div>
+          <div class="font-mono text-xs text-text-secondary space-y-1 mb-3">
+            <div>1. Issue #892 created by @alex (Sep 1)</div>
+            <div>2. Branch feature/route-cache (Sep 2)</div>
+            <div>3. Commit 8f3b12a by @timneutkens</div>
+            <div>4. PR #142 opened (Sep 2)</div>
+            <div>5. CI: 12 checks passed (Sep 2)</div>
+            <div>6. Approved by @sokra & @kdy1 (Sep 3)</div>
+            <div>7. Merged into canary (Sep 3)</div>
+            <div>8. Shipped in v15.2.0-canary.18 (Sep 4)</div>
+          </div>
+          <button id="sim-btn-copy-trace" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-bg-surface text-text-primary text-xs font-semibold hover:bg-bg-hover transition-colors border border-border">
+            <i data-lucide="copy" class="w-3 h-3"></i> Copy Trace
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderCodeEmbed() {
+  return `
+    <div class="flex gap-4">
+      <div class="w-10 h-10 rounded-full bg-gradient-to-br from-gh-blue to-gh-purple flex items-center justify-center flex-shrink-0">
+        <i data-lucide="code" class="w-5 h-5 text-white"></i>
+      </div>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2 mb-1">
+          <span class="font-semibold text-sm">DevPulse</span>
+          <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-discord-blurple text-white uppercase">Bot</span>
+          <span class="text-xs text-text-muted">Today at 10:52 AM</span>
+        </div>
+        <div class="text-xs font-mono text-gh-blue mb-2">/code blame file:packages/next/src/server/route-matcher.ts lines:40-46</div>
+        <div class="rounded-lg bg-discord-embed border-l-4 border-gh-blue p-4">
+          <div class="text-sm font-semibold mb-2">route-matcher.ts (Lines 40-46)</div>
+          <div class="font-mono text-xs bg-[#111214] rounded p-3 mb-2 overflow-x-auto">
+            <div><span class="text-text-muted">40</span> | export function matchRoute(url: string, routes: Route[]): Route | null {</div>
+            <div><span class="text-text-muted">41</span> |   <span class="text-text-muted">// [e71ab82 @timneutkens 3d ago] Fast-path lookup</span></div>
+            <div><span class="text-text-muted">42</span> |   const exact = exactMap.get(url);</div>
+            <div><span class="text-text-muted">43</span> |   if (exact) return exact;</div>
+            <div><span class="text-text-muted">44</span> |   <span class="text-text-muted">// [8f3b12a @sokra 1w ago] Fallback evaluator</span></div>
+            <div><span class="text-text-muted">45</span> |   return evaluateRegexRoutes(url, routes);</div>
+            <div><span class="text-text-muted">46</span> | }</div>
+          </div>
+          <div class="text-xs text-text-secondary">Commit 8f3b12a originated from PR #138 merged Aug 28.</div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderActivityEmbed() {
+  return `
+    <div class="flex gap-4">
+      <div class="w-10 h-10 rounded-full bg-gradient-to-br from-gh-green to-gh-blue flex items-center justify-center flex-shrink-0">
+        <i data-lucide="bar-chart-2" class="w-5 h-5 text-white"></i>
+      </div>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2 mb-1">
+          <span class="font-semibold text-sm">DevPulse</span>
+          <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-discord-blurple text-white uppercase">Bot</span>
+          <span class="text-xs text-text-muted">Today at 10:55 AM</span>
+        </div>
+        <div class="text-xs font-mono text-gh-blue mb-2">/activity me days:7</div>
+        <div class="rounded-lg bg-discord-embed border-l-4 border-gh-green p-4">
+          <div class="text-sm font-semibold mb-2">Personal Activity Profile (@swadhin)</div>
+          <div class="text-xs text-text-secondary mb-3">48 commits • 6 PRs authored • 14 PRs reviewed</div>
+          <div class="font-mono text-xs space-y-1 mb-3">
+            <div class="flex items-center gap-2"><span class="w-8 text-text-muted">Mon</span> <span class="text-gh-green">██████████████</span> 14</div>
+            <div class="flex items-center gap-2"><span class="w-8 text-text-muted">Tue</span> <span class="text-gh-green">██████████</span> 10</div>
+            <div class="flex items-center gap-2"><span class="w-8 text-text-muted">Wed</span> <span class="text-gh-green">██████</span> 6</div>
+            <div class="flex items-center gap-2"><span class="w-8 text-text-muted">Thu</span> <span class="text-gh-green">████████████</span> 12</div>
+            <div class="flex items-center gap-2"><span class="w-8 text-text-muted">Fri</span> <span class="text-gh-green">████</span> 4</div>
+            <div class="flex items-center gap-2"><span class="w-8 text-text-muted">Sat</span> <span class="text-gh-green">█</span> 1</div>
+            <div class="flex items-center gap-2"><span class="w-8 text-text-muted">Sun</span> <span class="text-gh-green">█</span> 1</div>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <div class="text-[10px] uppercase text-text-muted font-bold mb-0.5">Churn Ratio</div>
+              <div class="text-xs">+2,140 / -840 (2.5x)</div>
+            </div>
+            <div>
+              <div class="text-[10px] uppercase text-text-muted font-bold mb-0.5">Avg Cycle</div>
+              <div class="text-xs">18h 40m</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
 }
 
 function attachSimulatorEvents() {
-  const approveBtn = document.getElementById("sim-btn-approve");
-  const changesBtn = document.getElementById("sim-btn-changes");
-  const mergeBtn = document.getElementById("sim-btn-merge");
-  const rerunBtn = document.getElementById("sim-btn-rerun");
-  const copyTraceBtn = document.getElementById("sim-btn-copy-trace");
+  // Tab switching
+  const tabs = document.querySelectorAll<HTMLButtonElement>(".sim-tab-btn");
+  for (const tab of tabs) {
+    tab.addEventListener("click", () => {
+      for (const t of tabs) t.classList.remove("active");
+      tab.classList.add("active");
+      const target = tab.getAttribute("data-tab");
+      if (target) {
+        state.activeTab = target;
+        renderSimulator();
+      }
+    });
+  }
 
-  if (approveBtn) {
-    approveBtn.addEventListener("click", () => {
+  // PR simulator buttons
+  document.addEventListener("click", (e) => {
+    const target = e.target as HTMLElement;
+    const btn = target.closest("button");
+    if (!btn) return;
+
+    if (btn.id === "sim-btn-approve") {
       state.prStatus = "approved";
       renderSimulator();
-    });
-  }
-
-  if (changesBtn) {
-    changesBtn.addEventListener("click", () => {
+    } else if (btn.id === "sim-btn-changes") {
       state.prStatus = "changes_requested";
       renderSimulator();
-    });
-  }
-
-  if (mergeBtn) {
-    mergeBtn.addEventListener("click", () => {
-      mergeBtn.innerHTML = `${icons.sync(14, "#ffffff")} Merging...`;
+    } else if (btn.id === "sim-btn-merge") {
+      btn.innerHTML = `<i data-lucide="loader-2" class="w-3 h-3 animate-spin"></i> Merging...`;
+      if (typeof lucide !== "undefined") lucide.createIcons();
       setTimeout(() => {
         state.prStatus = "merged";
         renderSimulator();
-      }, 600);
-    });
-  }
-
-  if (rerunBtn) {
-    rerunBtn.addEventListener("click", () => {
-      rerunBtn.innerHTML = `${icons.sync(14, "#ffffff")} Dispatching GitHub Actions...`;
-      setTimeout(() => {
-        rerunBtn.innerHTML = `${icons.check(14, "#3fb950")} Workflows Triggered`;
       }, 800);
-    });
-  }
-
-  if (copyTraceBtn) {
-    copyTraceBtn.addEventListener("click", () => {
-      copyText("Issue #892 -> PR #142 -> v15.2.0-canary.18 (Commit 8f3b12a)", copyTraceBtn);
-    });
-  }
-
-  // Repo sub-tabs
-  for (const sub of ["overview", "commits", "prs", "issues", "releases"]) {
-    const btn = document.getElementById(`sim-repo-${sub}`);
-    if (btn) {
-      btn.addEventListener("click", () => {
-        state.repoTab = sub as any;
-        renderSimulator();
+    } else if (btn.id === "sim-btn-rerun") {
+      const original = btn.innerHTML;
+      btn.innerHTML = `<i data-lucide="loader-2" class="w-3 h-3 animate-spin"></i> Dispatching...`;
+      if (typeof lucide !== "undefined") lucide.createIcons();
+      setTimeout(() => {
+        btn.innerHTML = `<i data-lucide="check" class="w-3 h-3 text-gh-green"></i> Triggered!`;
+        if (typeof lucide !== "undefined") lucide.createIcons();
+        setTimeout(() => {
+          btn.innerHTML = original;
+          if (typeof lucide !== "undefined") lucide.createIcons();
+        }, 2000);
+      }, 1000);
+    } else if (btn.id === "sim-btn-copy-trace") {
+      const text = "Issue #892 → PR #142 → v15.2.0-canary.18 (Commit 8f3b12a)";
+      navigator.clipboard.writeText(text).then(() => {
+        const original = btn.innerHTML;
+        btn.innerHTML = `<i data-lucide="check" class="w-3 h-3"></i> Copied!`;
+        if (typeof lucide !== "undefined") lucide.createIcons();
+        setTimeout(() => {
+          btn.innerHTML = original;
+          if (typeof lucide !== "undefined") lucide.createIcons();
+        }, 2000);
       });
     }
-  }
-}
-
-// Scroll reveal observer
-function initScrollReveal() {
-  const reveals = document.querySelectorAll(".reveal");
-  const observer = new IntersectionObserver(
-    (entries) => {
-      for (const entry of entries) {
-        if (entry.isIntersecting) {
-          entry.target.classList.add("visible");
-          observer.unobserve(entry.target);
-        }
-      }
-    },
-    { threshold: 0.1, rootMargin: "0px 0px -40px 0px" }
-  );
-
-  for (const el of reveals) {
-    observer.observe(el);
-  }
+  });
 }
 
 // Navbar scroll effect
-function initNavbarScroll() {
+function initNavbar() {
   const navbar = document.getElementById("navbar");
   if (!navbar) return;
 
@@ -403,9 +541,9 @@ function initNavbarScroll() {
     if (!ticking) {
       requestAnimationFrame(() => {
         if (window.scrollY > 10) {
-          navbar.classList.add("scrolled");
+          navbar.classList.add("navbar-scrolled");
         } else {
-          navbar.classList.remove("scrolled");
+          navbar.classList.remove("navbar-scrolled");
         }
         ticking = false;
       });
@@ -416,100 +554,62 @@ function initNavbarScroll() {
   window.addEventListener("scroll", onScroll, { passive: true });
 }
 
-// Feature card mouse glow tracking
-function initCardGlow() {
-  const cards = document.querySelectorAll<HTMLElement>(".feature-card");
-  for (const card of cards) {
-    card.addEventListener("mousemove", (e) => {
-      const rect = card.getBoundingClientRect();
-      const x = ((e.clientX - rect.left) / rect.width) * 100;
-      const y = ((e.clientY - rect.top) / rect.height) * 100;
-      card.style.setProperty("--mouse-x", `${x}%`);
-      card.style.setProperty("--mouse-y", `${y}%`);
+// Mobile menu toggle
+function initMobileMenu() {
+  const btn = document.getElementById("mobile-menu-btn");
+  const menu = document.getElementById("mobile-menu");
+
+  if (btn && menu) {
+    btn.addEventListener("click", () => {
+      menu.classList.toggle("hidden");
     });
-  }
-}
 
-// Search input focus effect
-function initSearchInput() {
-  const input = document.getElementById("feature-search-input") as HTMLInputElement | null;
-  if (!input) return;
-
-  input.addEventListener("focus", () => {
-    input.style.borderColor = "var(--gh-blue-border)";
-    input.style.boxShadow = "0 0 0 3px rgba(88, 166, 255, 0.1)";
-  });
-
-  input.addEventListener("blur", () => {
-    input.style.borderColor = "var(--border-default)";
-    input.style.boxShadow = "none";
-  });
-}
-
-// Initialize on DOM load
-document.addEventListener("DOMContentLoaded", () => {
-  // Populate tab button icons dynamically
-  const tabIcons: Record<string, string> = {
-    pr: icons.gitPullRequest(14),
-    repo: icons.repo(14),
-    actions: icons.actions(14),
-    investigate: icons.investigate(14),
-    code: icons.code(14),
-    activity: icons.graph(14),
-  };
-
-  const tabs = document.querySelectorAll<HTMLButtonElement>(".sim-tab-btn");
-  for (const tab of tabs) {
-    const target = tab.getAttribute("data-tab");
-    if (target && tabIcons[target]) {
-      const label = tab.innerText.replace(/[^a-zA-Z0-9_./#-]/g, "").trim();
-      tab.innerHTML = `${tabIcons[target]} <span>/${target === "actions" ? "actions" : target === "activity" ? "activity" : target} ${label}</span>`;
+    // Close on link click
+    const links = menu.querySelectorAll("a");
+    for (const link of links) {
+      link.addEventListener("click", () => {
+        menu.classList.add("hidden");
+      });
     }
+  }
+}
 
-    tab.addEventListener("click", () => {
-      for (const t of tabs) {
-        t.classList.remove("active");
-      }
-      tab.classList.add("active");
-      if (target) {
-        state.activeTab = target;
-        renderSimulator();
-      }
+// Copy buttons
+function initCopyButtons() {
+  const copyAllBtn = document.getElementById("copy-all-btn");
+  if (copyAllBtn) {
+    copyAllBtn.addEventListener("click", () => {
+      const commands = `git clone https://github.com/husteno-o/git-discord-bot.git\ncd git-discord-bot\nbun install\ncp .env.example .env\nbun run start`;
+      navigator.clipboard.writeText(commands).then(() => {
+        const original = copyAllBtn.innerHTML;
+        copyAllBtn.innerHTML = `<i data-lucide="check" class="w-3 h-3"></i> Copied!`;
+        if (typeof lucide !== "undefined") lucide.createIcons();
+        setTimeout(() => {
+          copyAllBtn.innerHTML = original;
+          if (typeof lucide !== "undefined") lucide.createIcons();
+        }, 2000);
+      });
     });
   }
+}
 
-  // Initial render
-  renderSimulator();
-
-  // Filter feature cards
-  const filterInput = document.getElementById("feature-search-input") as HTMLInputElement | null;
-  if (filterInput) {
-    filterInput.addEventListener("input", (e) => {
-      const q = (e.target as HTMLInputElement).value.toLowerCase().trim();
-      const cards = document.querySelectorAll<HTMLElement>(".feature-card");
-      for (const card of cards) {
-        const text = card.innerText.toLowerCase();
-        if (q === "" || text.includes(q)) {
-          card.style.display = "flex";
-          card.style.animation = "fadeInUp 0.3s var(--ease-out-expo) both";
-        } else {
-          card.style.display = "none";
+// Scroll effects
+function initScrollEffects() {
+  // Intersection observer for reveal animations
+  const reveals = document.querySelectorAll(".reveal");
+  if (reveals.length > 0) {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("visible");
+            observer.unobserve(entry.target);
+          }
         }
-      }
-    });
-  }
+      },
+      { threshold: 0.1, rootMargin: "0px 0px -40px 0px" },
+    );
 
-  // Copy Clone command button
-  const clonePill = document.getElementById("clone-repo-pill");
-  if (clonePill) {
-    clonePill.addEventListener("click", () => {
-      copyText("git clone git@github.com:husteno-o/git-discord-bot.git", clonePill);
-    });
+    for (const el of reveals) observer.observe(el);
   }
-
-  // Initialize scroll-triggered animations
-  initScrollReveal();
-  initNavbarScroll();
-  initCardGlow();
-  initSearchInput();
-});
+}

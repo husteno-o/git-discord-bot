@@ -29,9 +29,14 @@ if (!buildResult.success) {
   process.exit(1);
 }
 
-// Copy HTML and CSS
+// Copy HTML, CSS, and assets
 await cp(path.join(srcDir, "index.html"), path.join(distDir, "index.html"));
 await cp(path.join(srcDir, "styles.css"), path.join(distDir, "styles.css"));
+
+// Copy public assets (logo.svg, etc.)
+if (existsSync(publicDir)) {
+  await cp(publicDir, distDir, { recursive: true });
+}
 
 // Copy public assets & Cloudflare Pages files (_headers, etc.)
 if (existsSync(publicDir)) {
