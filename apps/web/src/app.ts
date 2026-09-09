@@ -173,7 +173,7 @@ const tabTemplates: Record<string, () => string> = {
 |-- Turbopack Integration E2E   [Passing] (4m 15s)
 |-- Edge Runtime Compatibility  [Passing] (52s)
 |-- Security Scanning & Audit   [Passing] (38s)
-\-- Production Bundle Analyzer  [Passing] (1m 04s)</div>
+\\-- Production Bundle Analyzer  [Passing] (1m 04s)</div>
             <div class="discord-action-row">
               <button class="discord-btn" id="sim-btn-rerun">${icons.sync(14, "#ffffff")} Rerun All Jobs</button>
               <button class="discord-btn discord-btn-danger" id="sim-btn-cancel" disabled>Cancel</button>
@@ -299,7 +299,18 @@ export function renderSimulator() {
 
   const renderer = tabTemplates[state.activeTab];
   if (renderer) {
-    container.innerHTML = renderer();
+    container.style.opacity = "0";
+    container.style.transform = "translateX(12px)";
+    container.style.transition = "opacity 0.15s ease, transform 0.15s ease";
+
+    requestAnimationFrame(() => {
+      container.innerHTML = renderer();
+      requestAnimationFrame(() => {
+        container.style.opacity = "1";
+        container.style.transform = "translateX(0)";
+      });
+    });
+
     attachSimulatorEvents();
   }
 }
@@ -331,7 +342,7 @@ function attachSimulatorEvents() {
       setTimeout(() => {
         state.prStatus = "merged";
         renderSimulator();
-      }, 500);
+      }, 600);
     });
   }
 
@@ -340,7 +351,7 @@ function attachSimulatorEvents() {
       rerunBtn.innerHTML = `${icons.sync(14, "#ffffff")} Dispatching GitHub Actions...`;
       setTimeout(() => {
         rerunBtn.innerHTML = `${icons.check(14, "#3fb950")} Workflows Triggered`;
-      }, 700);
+      }, 800);
     });
   }
 
@@ -360,6 +371,79 @@ function attachSimulatorEvents() {
       });
     }
   }
+}
+
+// Scroll reveal observer
+function initScrollReveal() {
+  const reveals = document.querySelectorAll(".reveal");
+  const observer = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("visible");
+          observer.unobserve(entry.target);
+        }
+      }
+    },
+    { threshold: 0.1, rootMargin: "0px 0px -40px 0px" }
+  );
+
+  for (const el of reveals) {
+    observer.observe(el);
+  }
+}
+
+// Navbar scroll effect
+function initNavbarScroll() {
+  const navbar = document.getElementById("navbar");
+  if (!navbar) return;
+
+  let ticking = false;
+  const onScroll = () => {
+    if (!ticking) {
+      requestAnimationFrame(() => {
+        if (window.scrollY > 10) {
+          navbar.classList.add("scrolled");
+        } else {
+          navbar.classList.remove("scrolled");
+        }
+        ticking = false;
+      });
+      ticking = true;
+    }
+  };
+
+  window.addEventListener("scroll", onScroll, { passive: true });
+}
+
+// Feature card mouse glow tracking
+function initCardGlow() {
+  const cards = document.querySelectorAll<HTMLElement>(".feature-card");
+  for (const card of cards) {
+    card.addEventListener("mousemove", (e) => {
+      const rect = card.getBoundingClientRect();
+      const x = ((e.clientX - rect.left) / rect.width) * 100;
+      const y = ((e.clientY - rect.top) / rect.height) * 100;
+      card.style.setProperty("--mouse-x", `${x}%`);
+      card.style.setProperty("--mouse-y", `${y}%`);
+    });
+  }
+}
+
+// Search input focus effect
+function initSearchInput() {
+  const input = document.getElementById("feature-search-input") as HTMLInputElement | null;
+  if (!input) return;
+
+  input.addEventListener("focus", () => {
+    input.style.borderColor = "var(--gh-blue-border)";
+    input.style.boxShadow = "0 0 0 3px rgba(88, 166, 255, 0.1)";
+  });
+
+  input.addEventListener("blur", () => {
+    input.style.borderColor = "var(--border-default)";
+    input.style.boxShadow = "none";
+  });
 }
 
 // Initialize on DOM load
@@ -407,6 +491,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const text = card.innerText.toLowerCase();
         if (q === "" || text.includes(q)) {
           card.style.display = "flex";
+          card.style.animation = "fadeInUp 0.3s var(--ease-out-expo) both";
         } else {
           card.style.display = "none";
         }
@@ -421,4 +506,10 @@ document.addEventListener("DOMContentLoaded", () => {
       copyText("git clone git@github.com:husteno-o/git-discord-bot.git", clonePill);
     });
   }
+
+  // Initialize scroll-triggered animations
+  initScrollReveal();
+  initNavbarScroll();
+  initCardGlow();
+  initSearchInput();
 });
