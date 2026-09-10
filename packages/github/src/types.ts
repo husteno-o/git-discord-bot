@@ -9,6 +9,8 @@ export interface GitHubRepo {
   description: string | null;
   htmlUrl: string;
   language: string | null;
+  languages?: Record<string, number>;
+  size?: number;
   stars: number;
   forks: number;
   openIssuesCount: number;
@@ -95,6 +97,24 @@ export interface GitHubUser {
   followers: number;
   following: number;
   createdAt: string;
+}
+
+export interface GitHubRepoEvent {
+  id: string;
+  type: string;
+  actor: { login: string; avatar_url: string };
+  payload: Record<string, unknown>;
+  repo: { name: string };
+  created_at: string;
+}
+
+export interface GitHubWatchEvent {
+  eventType: "release" | "pull_request" | "issues" | "public";
+  action: string;
+  repoFullName: string;
+  payload: Record<string, unknown>;
+  actor: string;
+  timestamp: string;
 }
 
 export interface RepoDashboardMetrics {

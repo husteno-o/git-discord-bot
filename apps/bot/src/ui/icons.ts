@@ -44,4 +44,10 @@ export const NF = {
   greenDot: "🟢",
   yellowDot: "🟡",
   redDot: "🔴",
+  chart: "📊",
+  pieChart: "🥧",
+  barChart: "📶",
+  clipboard: "📋",
+  brain: "🧠",
+  magnifier: "🔬",
 } as const;

@@ -1009,6 +1009,13 @@ export function createAiExplainEmbed(
         ? Macchiato.peach
         : Macchiato.blue;
 
+  const complexityMeter =
+    explanation.complexity === "High"
+      ? `${ANSI.red}${"█".repeat(8)}${"░".repeat(2)}${ANSI.reset}`
+      : explanation.complexity === "Moderate"
+        ? `${ANSI.yellow}${"█".repeat(5)}${"░".repeat(5)}${ANSI.reset}`
+        : `${ANSI.green}${"█".repeat(2)}${"░".repeat(8)}${ANSI.reset}`;
+
   const loc = `${file.path}${line ? ` (L${line})` : ""}`;
 
   const tui = renderTuiCard([
@@ -1025,6 +1032,8 @@ export function createAiExplainEmbed(
     ),
     tuiDivider("ARCHITECTURAL ROLE"),
     tuiLine(`${ANSI.white}${clipAnsi(explanation.architectureRole, 37)}${ANSI.reset}`),
+    tuiDivider("COMPLEXITY RADAR"),
+    tuiLine(`${ANSI.dim}Load:${ANSI.reset} ${complexityMeter} ${complexityAnsi}${explanation.complexity}${ANSI.reset}`),
     tuiBottomBar(),
   ]);
 
@@ -1034,19 +1043,21 @@ export function createAiExplainEmbed(
 
   if (explanation.keyComponents.length > 0) {
     md += `**🧩 Key Components & Responsibilities:**\n`;
-    for (const comp of explanation.keyComponents.slice(0, 4)) {
+    for (const comp of explanation.keyComponents.slice(0, 6)) {
       md += `• **\`${comp.name}\`**: ${comp.purpose}\n`;
     }
     md += "\n";
   }
 
   if (explanation.dependencies.length > 0) {
-    md += `**📦 Dependencies:** ${explanation.dependencies.map((d) => `\`${d}\``).join(", ")}\n\n`;
+    const depList = explanation.dependencies.slice(0, 8).map((d) => `\`${d}\``).join(", ");
+    const depCount = explanation.dependencies.length > 8 ? ` (+${explanation.dependencies.length - 8} more)` : "";
+    md += `**📦 Dependencies (${explanation.dependencies.length}):** ${depList}${depCount}\n\n`;
   }
 
   if (explanation.securityConsiderations.length > 0) {
     md += `**🛡️ Security & Performance Considerations:**\n`;
-    for (const sec of explanation.securityConsiderations.slice(0, 3)) {
+    for (const sec of explanation.securityConsiderations.slice(0, 4)) {
       md += `• ${sec}\n`;
     }
     md += "\n";
@@ -1054,7 +1065,7 @@ export function createAiExplainEmbed(
 
   md += `*⚡ Code intelligence powered by ${explanation.poweredBy}*`;
 
-  return createBaseEmbed(`${NF.terminal} Code Explanation: ${file.name}`)
+  return createBaseEmbed(`${NF.brain} Code Explanation: ${file.name}`)
     .setAuthor({
       name: `GITBOT Intelligence Copilot • ${repo.fullName}`,
       iconURL: repo.owner.avatarUrl,
@@ -1063,4 +1074,65 @@ export function createAiExplainEmbed(
     .setURL(file.htmlUrl)
     .setColor(complexityColor)
     .setDescription(`${tui}\n\n${md}`);
+}
+
+export function createWatchNotificationEmbed(event: {
+  repoFullName: string;
+  eventType: "release" | "pull_request" | "security_alert";
+  actor: string;
+  actorAvatar: string;
+  payload: Record<string, unknown>;
+  eventUrl: string;
+  timestamp: Date;
+}): EmbedBuilder {
+  const payload = event.payload;
+  let title = "";
+  let description = "";
+  let color: number = Macchiato.blue;
+
+  switch (event.eventType) {
+    case "release": {
+      const release = payload.release as { tag_name?: string; name?: string; html_url?: string } | undefined;
+      const tagName = release?.tag_name || payload.tag_name || "unknown";
+      title = `${NF.gitTag} New Release: ${event.repoFullName}`;
+      description = `**Tag:** \`${tagName}\`\n**Published by:** @${event.actor}`;
+      color = Macchiato.yellow;
+      break;
+    }
+    case "pull_request": {
+      const pr = payload.pull_request as { number?: number; title?: string; html_url?: string; user?: { login: string } } | undefined;
+      title = `${NF.gitPullRequest} New PR: ${event.repoFullName}`;
+        description = pr
+          ? `**[#${pr.number}](${pr.html_url}) ${pr.title || ""}\n**Author:** @${pr.user?.login || event.actor}`
+          : `**Created by:** @${event.actor}`;
+      color = Macchiato.sapphire;
+      break;
+    }
+    case "security_alert": {
+      title = `${NF.shield} Security Alert: ${event.repoFullName}`;
+      description = `**Reported by:** @${event.actor}\n**Action required:** Review and patch the identified vulnerability.`;
+      color = Macchiato.red;
+      break;
+    }
+  }
+
+  const timeStr = Math.floor(event.timestamp.getTime() / 1000);
+
+  return createBaseEmbed(title)
+    .setColor(color)
+    .setAuthor({
+      name: `@${event.actor}`,
+      iconURL: event.actorAvatar || undefined,
+    })
+    .setDescription(description)
+    .addFields({
+      name: "View on GitHub",
+      value: `[${event.repoFullName}](${event.eventUrl})`,
+      inline: false,
+    })
+    .setFooter({
+      text: `GITBOT Watchtower • <t:${timeStr}:R>`,
+      iconURL: "https://github.githubassets.com/favicons/favicon.png",
+    })
+    .setTimestamp();
 }

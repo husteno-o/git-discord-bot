@@ -1,7 +1,8 @@
+import { db, notifications } from "@devpulse/database";
 import { initDatabase } from "@devpulse/database";
 import { logger } from "@devpulse/logger";
 import type { MonitorCheckOutcome } from "@devpulse/monitoring";
-import { type DueReminder, scheduler } from "@devpulse/scheduler";
+import { type DueReminder, type WatchNotificationEvent, scheduler } from "@devpulse/scheduler";
 import {
   ActivityType,
   ApplicationIntegrationType,
@@ -14,11 +15,12 @@ import {
   type ThreadChannel,
   type VoiceChannel,
 } from "discord.js";
+import { and, eq } from "drizzle-orm";
 
 type SendableChannel = TextChannel | DMChannel | NewsChannel | ThreadChannel | VoiceChannel;
 import { commands } from "../commands/index.js";
 import { BrandColors } from "../ui/colors.js";
-import { createBaseEmbed } from "../ui/embeds.js";
+import { createBaseEmbed, createWatchNotificationEmbed } from "../ui/embeds.js";
 import { NF } from "../ui/icons.js";
 
 export async function handleReady(client: Client<true>): Promise<void> {
@@ -110,6 +112,41 @@ export async function handleReady(client: Client<true>): Promise<void> {
     }
   });
 
-  // 5. Start background scheduler
+    // 5. Start background scheduler
+  scheduler.setWatchEventHandler(async (event: WatchNotificationEvent) => {
+    try {
+      await db
+        .select()
+        .from(notifications)
+        .where(
+          and(eq(notifications.target, event.repoFullName), eq(notifications.isEnabled, true)),
+        )
+        .then(async (activeSubs) => {
+          for (const sub of activeSubs) {
+            const shouldNotify =
+              (sub.type === "github_release" && event.eventType === "release") ||
+              (sub.type === "github_pr" && event.eventType === "pull_request") ||
+              (sub.type === "security_alert" && event.eventType === "security_alert");
+
+            if (!shouldNotify) continue;
+
+            const guild = await client.guilds.fetch(sub.guildId).catch(() => null);
+            if (!guild) continue;
+
+            const channel =
+              guild.channels.cache.get(sub.channelId) ||
+              (await guild.channels.fetch(sub.channelId).catch(() => null));
+
+            if (channel && "send" in channel) {
+              const embed = createWatchNotificationEmbed(event);
+              await (channel as SendableChannel).send({ embeds: [embed] });
+            }
+          }
+        });
+    } catch (err: unknown) {
+      logger.error({ err, repo: event.repoFullName }, "Failed to deliver watch notification");
+    }
+  });
+
   scheduler.start(30000);
 }

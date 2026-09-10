@@ -206,6 +206,24 @@ export async function initDatabase(client = getDbClient()): Promise<void> {
       created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
     );`,
     `CREATE INDEX IF NOT EXISTS audit_logs_guild_idx ON audit_logs (guild_id);`,
+
+    // 14. github_events (event deduplication for /watch polling)
+    `CREATE TABLE IF NOT EXISTS github_events (
+      id TEXT PRIMARY KEY,
+      repo_full_name TEXT NOT NULL,
+      event_id TEXT NOT NULL,
+      event_type TEXT NOT NULL,
+      action TEXT,
+      payload TEXT NOT NULL,
+      processed_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
+    );`,
+    `CREATE INDEX IF NOT EXISTS github_events_repo_idx ON github_events (repo_full_name);`,
+    `CREATE INDEX IF NOT EXISTS github_events_repo_event_idx ON github_events (repo_full_name, event_id);`,
+    `CREATE INDEX IF NOT EXISTS github_events_retention_idx ON github_events (processed_at);`,
+
+    // 15. Data retention cleanup for monitor_results and audit_logs
+    `DELETE FROM monitor_results WHERE checked_at < (unixepoch('now', '-90 days') * 1000);`,
+    `DELETE FROM audit_logs WHERE created_at < (unixepoch('now', '-30 days') * 1000);`,
   ];
 
   for (const sql of statements) {

@@ -31,6 +31,24 @@ export function createBotClient(options?: { enableMessageContent?: boolean }): C
 export async function startUnifiedApp() {
   logger.info("Initializing DevPulse Unified Platform (API + Discord Bot)...");
 
+  // Global error handlers — prevent silent crashes
+  process.on("unhandledRejection", (reason: unknown) => {
+    logger.error({ err: reason }, "Unhandled promise rejection");
+  });
+  process.on("uncaughtException", (err: Error) => {
+    logger.error({ err }, "Uncaught exception — process will exit");
+    process.exit(1);
+  });
+
+  // Global error handlers — prevent silent crashes
+  process.on("unhandledRejection", (reason: unknown) => {
+    logger.error({ err: reason }, "Unhandled promise rejection");
+  });
+  process.on("uncaughtException", (err: Error) => {
+    logger.error({ err }, "Uncaught exception — process will exit");
+    process.exit(1);
+  });
+
   // 1. Initialize SQLite / libSQL database tables and indexes
   await initDatabase();
 

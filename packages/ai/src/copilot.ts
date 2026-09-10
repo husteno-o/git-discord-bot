@@ -151,11 +151,30 @@ Respond strictly with valid JSON conforming to:
     files: GitHubPullRequestFile[],
   ): AiCodeReviewResult {
     const findings: AiCodeReviewFinding[] = [];
-    let riskScore = 95;
+    let riskScore = 100;
+    let securityIssues = 0;
+    let bugIssues = 0;
+    let perfIssues = 0;
+    let styleIssues = 0;
 
     for (const f of files) {
       const patch = f.patch || "";
       const lines = patch.split("\n");
+      let hasCleanup = /clearInterval|removeEventListener|abort\(\)|return\s*\(\s*\)\s*=>\s*\{/.test(patch);
+      let hasAwait = /await/.test(patch);
+      let hasTryCatch = /try\s*\{/.test(patch);
+      const hasTypeAnnotation = /:\s*(string|number|boolean|Promise<|Array<)/.test(patch);
+      if (!hasTypeAnnotation && f.filename.match(/\.(ts|tsx)$/)) {
+        findings.push({
+          category: "style",
+          severity: "LOW",
+          title: "No Type Annotations Detected",
+          file: f.filename,
+          description: "TypeScript file has no visible type annotations in this diff. Implicit 'any' reduces type safety.",
+          suggestion: "Add explicit type annotations to function parameters and return types for better compile-time guarantees.",
+        });
+        riskScore -= 3;
+      }
 
       lines.forEach((line: string, idx: number) => {
         if (!line.startsWith("+") || line.startsWith("+++")) return;
@@ -165,119 +184,240 @@ Respond strictly with valid JSON conforming to:
         if (/\bnew Promise\b/.test(code) && !code.includes("reject") && !code.includes("catch")) {
           findings.push({
             category: "bug",
-            severity: "MEDIUM",
-            title: "Potential Unhandled Promise Rejection",
+            severity: "HIGH",
+            title: "Unhandled Promise Rejection Risk",
             file: f.filename,
             line: idx + 1,
-            description: "Promise instantiated without evident rejection handler or catch chain.",
-            suggestion: "Ensure .catch() or try/await boundary surrounds this asynchronous branch.",
+            description: "Promise created without .catch() or rejection handler. Crashes Node.js on unhandled rejection.",
+            suggestion: "Wrap in try/catch or append .catch() handler to gracefully manage async failures.",
           });
-          riskScore -= 10;
+          riskScore -= 12;
+          bugIssues++;
         }
 
-        // 2. Leaked debug statements
-        if (/\bconsole\.(log|debug|dir)\(/.test(code) && !f.filename.includes("test")) {
+        // 2. Missing await on async call
+        if (/\b(fetch|axios|await\s+import|Promise\.all|Promise\.race)\b/.test(code) && !hasAwait && !code.includes("await")) {
+          findings.push({
+            category: "bug",
+            severity: "MEDIUM",
+            title: "Missing Await on Async Operation",
+            file: f.filename,
+            line: idx + 1,
+            description: "Async call detected without await — returns unresolved Promise instead of resolved value.",
+            suggestion: "Add `await` before the async call or handle the returned Promise explicitly.",
+          });
+          riskScore -= 8;
+          bugIssues++;
+        }
+
+        // 3. Leaked debug statements
+        if (/\bconsole\.(log|debug|dir|trace)\(/.test(code) && !f.filename.includes("test")) {
           findings.push({
             category: "style",
             severity: "LOW",
-            title: "Production Console Logger Left in Code",
+            title: "Production Console Statement",
             file: f.filename,
             line: idx + 1,
-            description: "Direct console.log statement found in non-test file.",
-            suggestion: "Replace with structured logger or remove before merge.",
+            description: `console.${code.match(/\bconsole\.(\w+)/)?.[1] || "log"}() left in production code leaks internal state to stdout.`,
+            suggestion: "Use structured logger (pino/winston) with appropriate log level, or remove before merge.",
           });
           riskScore -= 3;
+          styleIssues++;
         }
 
-        // 3. Dangerous HTML or Eval
-        if (/dangerouslySetInnerHTML|eval\(|new Function\(/.test(code)) {
+        // 4. Dangerous HTML or Eval
+        if (/dangerouslySetInnerHTML|eval\(|new Function\(|\.innerHTML\s*=/.test(code)) {
           findings.push({
             category: "security",
             severity: "CRITICAL",
-            title: "Direct Code Execution / XSS Vector Detected",
+            title: "XSS / Code Injection Vector",
             file: f.filename,
             line: idx + 1,
-            description: "Use of eval, new Function, or raw HTML injection detected.",
-            suggestion: "Sanitize inputs or utilize safe DOM parsing alternatives.",
+            description: "Direct code execution or unsanitized HTML injection detected. Attackers can inject arbitrary scripts.",
+            suggestion: "Use DOMPurify for HTML sanitization, or safe DOM APIs (textContent, createElement). Never use eval().",
+          });
+          riskScore -= 30;
+          securityIssues++;
+        }
+
+        // 5. Hardcoded Secrets
+        if (/(api[_-]?key|secret|password|token|private[_-]?key)\s*[:=]\s*['"][A-Za-z0-9_\-]{12,}['"]/i.test(code)) {
+          findings.push({
+            category: "security",
+            severity: "CRITICAL",
+            title: "Hardcoded Credential in Source",
+            file: f.filename,
+            line: idx + 1,
+            description: "High-entropy secret string committed to source control. Exposed in git history even after removal.",
+            suggestion: "Immediately rotate this credential. Use environment variables or a secret vault (AWS Secrets Manager, Vault).",
           });
           riskScore -= 35;
+          securityIssues++;
         }
 
-        // 4. Hardcoded Secrets
-        if (/(api[_-]?key|secret|password|token)\s*[:=]\s*['"][A-Za-z0-9_\-]{8,}['"]/i.test(code)) {
-          findings.push({
-            category: "security",
-            severity: "CRITICAL",
-            title: "Possible Hardcoded API Token or Secret",
-            file: f.filename,
-            line: idx + 1,
-            description: "High-entropy string assigned to sensitive variable name.",
-            suggestion: "Move credential to environment variables (.env) or secret vault.",
-          });
-          riskScore -= 40;
-        }
-
-        // 5. Memory leak: setInterval or addEventListener without cleanup
+        // 6. Memory leak: setInterval or addEventListener without cleanup
         if (
           /(setInterval|addEventListener)\(/.test(code) &&
-          (f.filename.includes(".tsx") ||
-            f.filename.includes(".jsx") ||
-            f.filename.includes(".vue"))
+          !hasCleanup &&
+          (f.filename.includes(".tsx") || f.filename.includes(".jsx") || f.filename.includes(".vue"))
         ) {
           findings.push({
             category: "performance",
-            severity: "MEDIUM",
-            title: "Unbound Listener / Timer Risk",
+            severity: "HIGH",
+            title: "Unbounded Timer / Event Listener",
             file: f.filename,
             line: idx + 1,
-            description: "Timer or event listener added in UI component.",
-            suggestion:
-              "Verify cleanup function removes listener in useEffect or component teardown.",
+            description: "Timer or listener attached without visible cleanup. Accumulates on re-renders causing memory leaks.",
+            suggestion: "Return cleanup function from useEffect that calls clearInterval/removeEventListener on unmount.",
           });
-          riskScore -= 8;
+          riskScore -= 10;
+          perfIssues++;
+        }
+
+        // 7. SQL Injection Risk
+        if (/\b(query|execute|sql)\s*\(.*(\$\{|`.*\$\{|[\+"])/i.test(code) || /\bWHERE\b.*[\+\$\`]/i.test(code)) {
+          findings.push({
+            category: "security",
+            severity: "CRITICAL",
+            title: "SQL Injection Vulnerability",
+            file: f.filename,
+            line: idx + 1,
+            description: "Dynamic SQL string concatenation detected. Attacker can inject arbitrary SQL commands.",
+            suggestion: "Use parameterized queries or prepared statements. Never interpolate user input into SQL strings.",
+          });
+          riskScore -= 30;
+          securityIssues++;
+        }
+
+        // 8. Floating Promise (no return or await)
+        if (/(async\s+function|\.then\()/.test(code) && !hasTryCatch && lines.length > 5) {
+          findings.push({
+            category: "bug",
+            severity: "MEDIUM",
+            title: "Floating Promise Without Error Boundary",
+            file: f.filename,
+            line: idx + 1,
+            description: "Async operation without try/catch wrapper. Errors propagate as unhandled rejections.",
+            suggestion: "Wrap async operations in try/catch blocks with proper error logging and user-facing fallbacks.",
+          });
+          riskScore -= 7;
+          bugIssues++;
+        }
+
+        // 9. Large function / file
+        if (idx > 50 && lines.slice(idx, idx + 20).filter(l => l.startsWith("+")).length > 20) {
+          findings.push({
+            category: "style",
+            severity: "MEDIUM",
+            title: "Large Code Block — Consider Splitting",
+            file: f.filename,
+            line: idx + 1,
+            description: "Adding 20+ lines in single block suggests function may violate single-responsibility principle.",
+            suggestion: "Extract logic into smaller, testable helper functions with clear interfaces.",
+          });
+          riskScore -= 5;
+          styleIssues++;
+        }
+
+        // 10. TODO/FIXME/HACK left in code
+        if (/\/\/\s*(TODO|FIXME|HACK|XXX|TEMP)\b/i.test(code)) {
+          findings.push({
+            category: "style",
+            severity: "LOW",
+            title: "Unresolved Technical Debt Marker",
+            file: f.filename,
+            line: idx + 1,
+            description: `Code marker "${code.match(/\/\/\s*(TODO|FIXME|HACK|XXX|TEMP)/i)?.[1]}" indicates incomplete implementation.`,
+            suggestion: "Resolve the tracked issue before merge, or file a follow-up ticket with reference.",
+          });
+          riskScore -= 2;
+          styleIssues++;
+        }
+
+        // 11. Type safety: using 'any' type
+        if (f.filename.match(/\.(ts|tsx)$/) && /:\s*any\b|as any|<any>/.test(code)) {
+          findings.push({
+            category: "bug",
+            severity: "MEDIUM",
+            title: "Type Safety: 'any' Type Usage",
+            file: f.filename,
+            line: idx + 1,
+            description: "Using 'any' bypasses TypeScript's type checker, deferring errors to runtime.",
+            suggestion: "Replace with proper type annotations, generics, or 'unknown' with type guards.",
+          });
+          riskScore -= 5;
+          bugIssues++;
+        }
+
+        // 12. Missing error handling in catch blocks
+        if (/\bcatch\s*\(/.test(code) && !/\b(console\.error|log|throw|reject)/.test(lines[idx + 1] || "")) {
+          findings.push({
+            category: "bug",
+            severity: "HIGH",
+            title: "Silent Catch Block — Swallowed Error",
+            file: f.filename,
+            line: idx + 1,
+            description: "Catch block detected without error logging or re-throw. Failures become invisible.",
+            suggestion: "Log the error context and either re-throw or return a meaningful error response.",
+          });
+          riskScore -= 10;
+          bugIssues++;
         }
       });
     }
 
+    // PR-level analysis
     if (pr.additions + pr.deletions > 800) {
       findings.push({
         category: "performance",
-        severity: "LOW",
+        severity: "MEDIUM",
         title: "High Change Blast Radius",
         file: "Pull Request Scope",
-        description: `PR modifies ${pr.additions + pr.deletions} lines across ${pr.changedFiles} files.`,
-        suggestion:
-          "Consider splitting into smaller, independently deployable PRs for faster turnaround.",
+        description: `PR modifies ${pr.additions + pr.deletions} lines across ${pr.changedFiles} files. Reviewability degrades significantly.`,
+        suggestion: "Split into smaller, independently deployable PRs (aim for < 400 lines changed).",
       });
       riskScore -= 5;
     }
 
-    const finalScore = Math.max(20, Math.min(100, riskScore));
+    if (!pr.body || pr.body.length < 20) {
+      findings.push({
+        category: "style",
+        severity: "LOW",
+        title: "Missing PR Description",
+        file: "Pull Request",
+        description: "PR lacks a meaningful description. Reviewers lack context on intent and testing strategy.",
+        suggestion: "Add description covering: motivation, changes made, testing performed, and breaking changes.",
+      });
+      riskScore -= 2;
+    }
+
+    const finalScore = Math.max(10, Math.min(100, riskScore));
     const riskLevel: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL" =
-      finalScore >= 85
+      finalScore >= 80
         ? "LOW"
-        : finalScore >= 70
+        : finalScore >= 60
           ? "MEDIUM"
-          : finalScore >= 50
+          : finalScore >= 40
             ? "HIGH"
             : "CRITICAL";
 
-    const topFinding = findings[0];
+    const criticalFindings = findings.filter(f => f.severity === "CRITICAL" || f.severity === "HIGH");
+    const topFinding = criticalFindings[0] || findings[0];
     const diffProposal = topFinding?.suggestion
-      ? `// Suggested improvement for ${topFinding.file}:\n// ${topFinding.suggestion}`
+      ? `// Fix for ${topFinding.file}${topFinding.line ? `:${topFinding.line}` : ""}:\n// ${topFinding.suggestion}`
       : undefined;
 
     return {
       summary:
         findings.length === 0
-          ? `Verified ${files.length} changed files (+${pr.additions} -${pr.deletions}). Clean diff with zero high-risk security regressions or memory leaks.`
-          : `Audited ${files.length} changed files. Flagged ${findings.length} item(s) requiring attention before production deployment.`,
+          ? `✓ Clean review: ${files.length} files, +${pr.additions}/-${pr.deletions} lines. Zero security, bug, or performance regressions. Safe to merge.`
+          : `⚠ ${findings.length} findings across ${files.length} files: ${securityIssues} security, ${bugIssues} bugs, ${perfIssues} performance, ${styleIssues} style. ${criticalFindings.length} require immediate attention.`,
       riskLevel,
       score: finalScore,
-      findings: findings.slice(0, 5),
-      approvedForMerge: riskLevel === "LOW",
+      findings: findings.slice(0, 8),
+      approvedForMerge: riskLevel === "LOW" && securityIssues === 0,
       diffProposal,
-      poweredBy: "GITBOT Code Heuristics Engine",
+      poweredBy: "GITBOT Heuristic Analyzer v2",
     };
   }
 
@@ -548,55 +688,204 @@ Respond strictly in valid JSON conforming to:
     const lines = code.split("\n");
     const keyComponents: { name: string; purpose: string }[] = [];
     const dependencies: string[] = [];
+    const securityConsiderations: string[] = [];
+    let hasAsync = false;
+    let hasErrorHandling = false;
+    let hasValidation = false;
+    let hasSideEffects = false;
+    let patternDetected = "Module";
 
     for (const l of lines) {
-      const impMatch = l.match(/import .* from\s+['"]([^'"]+)['"]/);
-      if (impMatch && dependencies.length < 5) {
+      const trimmed = l.trim();
+
+      // Imports
+      const impMatch = trimmed.match(/import\s+(?:.+\s+from\s+)?['"]([^'"]+)['"]/);
+      if (impMatch && !dependencies.includes(impMatch[1]) && dependencies.length < 8) {
         dependencies.push(impMatch[1]);
       }
 
-      const fnMatch = l.match(/export\s+(async\s+)?function\s+([a-zA-Z0-9_]+)/);
-      if (fnMatch && keyComponents.length < 4) {
+      // Exported functions
+      const fnMatch = trimmed.match(/export\s+(?:async\s+)?function\s+([a-zA-Z0-9_]+)\s*(?:<[^>]*>)?\s*\(([^)]*)\)/);
+      if (fnMatch && keyComponents.length < 6) {
+        const params = fnMatch[2] ? fnMatch[2].split(",").map(p => p.trim().split(/[=:]/)[0].trim()).filter(Boolean) : [];
         keyComponents.push({
-          name: `${fnMatch[2]}()`,
-          purpose: `Exported handler executing core domain logic for ${fnMatch[2]}`,
+          name: `${fnMatch[1]}(${params.slice(0, 3).join(", ")}${params.length > 3 ? "..." : ""})`,
+          purpose: inferFunctionPurpose(fnMatch[1], trimmed, code),
         });
       }
 
-      const classMatch = l.match(/export\s+class\s+([a-zA-Z0-9_]+)/);
-      if (classMatch && keyComponents.length < 4) {
+      // Arrow functions
+      const arrowMatch = trimmed.match(/export\s+const\s+([a-zA-Z0-9_]+)\s*=\s*(?:async\s*)?\(([^)]*)\)\s*=>/);
+      if (arrowMatch && keyComponents.length < 6) {
+        keyComponents.push({
+          name: `${arrowMatch[1]}()`,
+          purpose: inferFunctionPurpose(arrowMatch[1], trimmed, code),
+        });
+      }
+
+      // Classes
+      const classMatch = trimmed.match(/export\s+(?:abstract\s+)?class\s+([a-zA-Z0-9_]+)/);
+      if (classMatch && keyComponents.length < 6) {
+        const classBody = lines.slice(lines.indexOf(l), lines.indexOf(l) + 30).join("\n");
+        const methods = (classBody.match(/\b(async\s+)?([a-zA-Z0-9_]+)\s*\(/g) || []).slice(0, 3).map(m => m.replace(/\($/, "()"));
         keyComponents.push({
           name: `class ${classMatch[1]}`,
-          purpose: `Domain class encapsulating behavior and state for ${classMatch[1]}`,
+          purpose: `Encapsulates state and behavior${methods.length > 0 ? `. Methods: ${methods.join(", ")}` : ""}`,
         });
       }
+
+      // Interfaces / Types
+      const ifaceMatch = trimmed.match(/export\s+(?:interface|type)\s+([a-zA-Z0-9_]+)/);
+      if (ifaceMatch && keyComponents.length < 6) {
+        keyComponents.push({
+          name: `${trimmed.match(/export\s+(interface|type)/)?.[1] || "type"} ${ifaceMatch[1]}`,
+          purpose: "Defines the shape of data flowing through this module's boundaries",
+        });
+      }
+
+      // Pattern detection
+      if (/\buseState|useEffect|useMemo|useCallback|useRef\b/.test(trimmed)) patternDetected = "React Hook";
+      if (/\brouter\.(get|post|put|delete|patch)\b/.test(trimmed)) patternDetected = "Route Handler";
+      if (/\bexpress\(\)|app\.(get|post|use|listen)\b/.test(trimmed)) patternDetected = "Express Middleware";
+      if (/\b(schema|model|entity)\b/i.test(trimmed) && /\b(string|number|boolean|Date|relation)\b/.test(trimmed)) patternDetected = "Data Model";
+      if (/\bdescribe\(|it\(|expect\(|test\(/.test(trimmed)) patternDetected = "Test Suite";
+      if (/\bdispatch|reducer|createSlice|useSelector/.test(trimmed)) patternDetected = "State Management";
+      if (/\bfetch\(|axios|http\.request/.test(trimmed)) { hasSideEffects = true; }
+      if (/\bawait\b/.test(trimmed)) hasAsync = true;
+      if (/\btry\s*\{|catch\s*\(/.test(trimmed)) hasErrorHandling = true;
+      if (/\b(zod|joi|yup|validate|isEmail|isURL)\b|if\s*\(\s*!\w+\s*\)\s*throw/.test(trimmed)) hasValidation = true;
     }
 
+    // Build architecture role
     let role = "Core Domain Utility";
-    if (path.includes("route") || path.includes("controller") || path.includes("api")) {
+    const pathLower = path.toLowerCase();
+    if (pathLower.includes("route") || pathLower.includes("controller") || pathLower.includes("/api/")) {
       role = "API Gateway & HTTP Route Controller";
-    } else if (path.includes("schema") || path.includes("database") || path.includes("db")) {
-      role = "Data Access & Persistence Schema";
-    } else if (path.includes("auth") || path.includes("security")) {
-      role = "Authentication & Security Boundary Guard";
+    } else if (pathLower.includes("schema") || pathLower.includes("migration") || pathLower.includes("model")) {
+      role = "Data Access & Persistence Layer";
+    } else if (pathLower.includes("auth") || pathLower.includes("middleware") || pathLower.includes("guard")) {
+      role = "Authentication & Authorization Middleware";
+    } else if (pathLower.includes("hook") || pathLower.includes("use-")) {
+      role = "React Composition Hook";
+    } else if (pathLower.includes("util") || pathLower.includes("helper") || pathLower.includes("lib")) {
+      role = "Shared Utility Library";
+    } else if (pathLower.includes("test") || pathLower.includes("__test") || pathLower.includes(".spec.")) {
+      role = "Test Suite / Quality Gate";
+    } else if (pathLower.includes("config") || pathLower.includes(".env") || pathLower.includes("constant")) {
+      role = "Configuration & Environment Contract";
+    } else if (pathLower.includes("store") || pathLower.includes("state") || pathLower.includes("redux")) {
+      role = "Application State Store";
     }
+
+    // Generate security considerations based on actual code analysis
+    if (!hasValidation && dependencies.some(d => /express|fastify|koa/.test(d))) {
+      securityConsiderations.push("Add input validation (zod/joi) on all incoming request payloads to prevent injection");
+    }
+    if (!hasErrorHandling && hasAsync) {
+      securityConsiderations.push("Wrap async operations in try/catch to prevent unhandled promise rejections from crashing the process");
+    }
+    if (hasSideEffects && !hasValidation) {
+      securityConsiderations.push("Sanitize external data before use — validate URLs and responses from third-party APIs");
+    }
+    if (dependencies.some(d => /jsonwebtoken|bcrypt|passport/.test(d))) {
+      securityConsiderations.push("Ensure token secrets use strong entropy and implement token expiration/rotation");
+    }
+    if (dependencies.some(d => /sql|pg|mysql|prisma|sequelize|typeorm/.test(d))) {
+      securityConsiderations.push("Use parameterized queries exclusively — never interpolate user input into SQL strings");
+    }
+    if (code.includes("CORS") || code.includes("Access-Control")) {
+      securityConsiderations.push("Restrict CORS origins to explicit allowlist — avoid wildcard (*) in production");
+    }
+    if (/\.env|process\.env/.test(code)) {
+      securityConsiderations.push("Ensure .env files are gitignored and secrets are rotated if ever committed");
+    }
+
+    if (securityConsiderations.length === 0) {
+      securityConsiderations.push("Review all public function signatures for input boundary safety");
+    }
+
+    const complexityFactors = [
+      lines.length > 300,
+      keyComponents.length > 4,
+      (code.match(/if\s*\(/g) || []).length > 10,
+      (code.match(/switch\s*\(/g) || []).length > 2,
+      (code.match(/for\s*\(|while\s*\(/g) || []).length > 3,
+      dependencies.length > 6,
+    ].filter(Boolean).length;
+
+    const complexity: "Low" | "Moderate" | "High" =
+      complexityFactors >= 3 ? "High" : complexityFactors >= 1 ? "Moderate" : "Low";
 
     return {
-      summary: `Defines ${keyComponents.length} primary exported components managing ${path.split("/").pop() || "source code"}.`,
+      summary: `${patternDetected} with ${keyComponents.length} exported members across ${lines.length} lines. ${hasAsync ? "Contains async operations. " : ""}${hasErrorHandling ? "Has error handling. " : ""}${hasValidation ? "Includes input validation. " : ""}${dependencies.length > 0 ? `Depends on ${dependencies.length} external modules.` : "Zero external dependencies."}`,
       architectureRole: role,
       keyComponents:
         keyComponents.length > 0
           ? keyComponents
-          : [{ name: "Default Module", purpose: "Executes module initialization" }],
-      complexity: lines.length > 250 ? "High" : lines.length > 80 ? "Moderate" : "Low",
-      dependencies: dependencies.length > 0 ? dependencies : ["Standard Library"],
-      securityConsiderations: [
-        "Validate all boundary arguments before passing into internal state",
-        "Ensure asynchronous exceptions are captured with explicit handlers",
-      ],
-      poweredBy: "GITBOT Structural Code Explainer",
+          : [{ name: "Module Root", purpose: "Executes module-level initialization and side effects" }],
+      complexity,
+      dependencies: dependencies.length > 0 ? dependencies : ["Standard Library Only"],
+      securityConsiderations: securityConsiderations.slice(0, 4),
+      poweredBy: "GITBOT Structural Analyzer v2",
     };
   }
+}
+
+function inferFunctionPurpose(name: string, _signature: string, context: string): string {
+  const nameLower = name.toLowerCase();
+
+  if (/^(get|fetch|find|retrieve|load|read)/.test(nameLower)) {
+    return `Retrieves and returns data from storage or external source`;
+  }
+  if (/^(create|add|insert|post|put|register|new)/.test(nameLower)) {
+    return `Creates and persists a new entity or resource`;
+  }
+  if (/^(update|edit|modify|patch|change|set)/.test(nameLower)) {
+    return `Mutates existing state or entity with new values`;
+  }
+  if (/^(delete|remove|destroy|clear|purge)/.test(nameLower)) {
+    return `Removes an entity or cleans up associated resources`;
+  }
+  if (/^(validate|check|verify|assert|is|has|can)/.test(nameLower)) {
+    return `Validates input constraints and returns boolean result`;
+  }
+  if (/^(parse|transform|convert|format|serialize|deserialize|map)/.test(nameLower)) {
+    return `Transforms data between representations or formats`;
+  }
+  if (/^(handle|on|process|execute|run|perform|do)/.test(nameLower)) {
+    return `Orchestrates a business logic workflow or event handler`;
+  }
+  if (/^(init|setup|configure|bootstrap|start)/.test(nameLower)) {
+    return `Initializes module state, connections, or configuration`;
+  }
+  if (/^(send|notify|emit|dispatch|publish)/.test(nameLower)) {
+    return `Dispatches messages, events, or notifications to consumers`;
+  }
+  if (/^(auth|login|logout|sign|token|session)/.test(nameLower)) {
+    return `Manages authentication state or credential verification`;
+  }
+  if (/^(render|display|show|view|component)/.test(nameLower)) {
+    return `Renders UI output or composes visual elements`;
+  }
+  if (/^(log|track|record|audit|metric)/.test(nameLower)) {
+    return `Captures observability data for monitoring and debugging`;
+  }
+  if (/^(middleware|guard|intercept|filter)/.test(nameLower)) {
+    return `Intercepts and transforms request/response pipeline`;
+  }
+  if (/^(hash|encrypt|decrypt|sign|verify)/.test(nameLower)) {
+    return `Performs cryptographic operations on sensitive data`;
+  }
+
+  // Fallback: check context for clues
+  if (context.includes("Promise") || context.includes("async")) {
+    return `Asynchronous operation with side effects`;
+  }
+  if (context.includes("return") && !context.includes("void")) {
+    return `Computes and returns derived value`;
+  }
+
+  return `Executes domain-specific business logic`;
 }
 
 export const aiCopilotService = new AiCopilotService();

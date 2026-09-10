@@ -242,6 +242,7 @@
         "@devpulse/config": "workspace:*",
         "@devpulse/core": "workspace:*",
         "@devpulse/database": "workspace:*",
+        "@devpulse/github": "workspace:*",
         "@devpulse/logger": "workspace:*",
         "@devpulse/monitoring": "workspace:*",
         "cron-parser": "^4.9.0",

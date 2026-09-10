@@ -347,3 +347,25 @@ export const auditLogs = sqliteTable(
     guildIdx: index("audit_logs_guild_idx").on(table.guildId),
   }),
 );
+
+// 14. GitHub Events (for /watch polling deduplication)
+export const gitHubEvents = sqliteTable(
+  "github_events",
+  {
+    id: text("id").primaryKey(), // `${repoFullName}:${eventId}:${eventType}`
+    repoFullName: text("repo_full_name").notNull(),
+    eventId: text("event_id").notNull(),
+    eventType: text("event_type").notNull(), // "release", "pull_request", "issue", "security_advisory"
+    action: text("action"), // "published", "opened", "created", "resolved"
+    payload: text("payload", { mode: "json" })
+      .$type<Record<string, unknown>>()
+      .notNull(),
+    processedAt: integer("processed_at", { mode: "timestamp_ms" })
+      .notNull()
+      .default(sql`(unixepoch() * 1000)`),
+  },
+  (table) => ({
+    repoIdx: index("github_events_repo_idx").on(table.repoFullName),
+    repoEventIdx: index("github_events_repo_event_idx").on(table.repoFullName, table.eventId),
+  }),
+);

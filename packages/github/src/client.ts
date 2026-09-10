@@ -18,6 +18,7 @@ import type {
   GitHubIssue,
   GitHubPullRequest,
   GitHubPullRequestFile,
+  GitHubRepoEvent,
   GitHubRelease,
   GitHubRepo,
   GitHubSearchItem,
@@ -149,7 +150,9 @@ export class GitHubClient {
           pushed_at: string;
           topics: string[];
           license: { name: string; spdx_id: string } | null;
+          size?: number;
         };
+        const languages = await this.getLanguages(repoInput).catch(() => ({}));
         return {
           id: raw.id,
           name: raw.name,
@@ -161,6 +164,8 @@ export class GitHubClient {
           description: raw.description,
           htmlUrl: raw.html_url,
           language: raw.language,
+          languages,
+          size: raw.size,
           stars: raw.stargazers_count,
           forks: raw.forks_count,
           openIssuesCount: raw.open_issues_count,
@@ -1350,6 +1355,27 @@ export class GitHubClient {
       1800,
       cache,
     );
+  }
+
+  async getRepoEvents(repoInput: string, limit = 20): Promise<GitHubRepoEvent[]> {
+    const { owner, repo } = this.parseRepoInput(repoInput);
+    return this.request<GitHubRepoEvent[]>(
+      `/repos/${owner}/${repo}/events?per_page=${limit}`,
+    );
+  }
+
+  async getLatestRelease(repoInput: string): Promise<GitHubRelease | null> {
+    const releases = await this.getReleases(repoInput, 1);
+    return releases.length > 0 ? releases[0] : null;
+  }
+
+  async getLatestReleaseTag(repoInput: string): Promise<string | null> {
+    try {
+      const release = await this.getLatestRelease(repoInput);
+      return release?.tagName || null;
+    } catch {
+      return null;
+    }
   }
 
   async getUser(username: string): Promise<GitHubUser> {
