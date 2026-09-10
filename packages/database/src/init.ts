@@ -46,7 +46,7 @@ export async function initDatabase(client = getDbClient()): Promise<void> {
       id TEXT PRIMARY KEY,
       guild_id TEXT NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
       user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      role TEXT NOT NULL DEFAULT 'developer',
+      role TEXT NOT NULL DEFAULT 'viewer',
       created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
     );`,
     `CREATE UNIQUE INDEX IF NOT EXISTS memberships_guild_user_idx ON server_memberships (guild_id, user_id);`,

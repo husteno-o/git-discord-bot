@@ -1,4 +1,5 @@
 import { UnauthorizedError } from "@devpulse/core";
+import { cache } from "@devpulse/cache";
 import { db, serverMemberships, servers } from "@devpulse/database";
 import { and, eq } from "drizzle-orm";
 
@@ -11,13 +12,19 @@ export const RoleHierarchy: Record<Role, number> = {
   viewer: 10,
 };
 
+const ROLE_CACHE_TTL = 300; // 5 minutes
+
 export async function getUserRole(guildId: string, userId: string): Promise<Role> {
-  // Check if user is server owner
+  const cacheKey = `perm:${guildId}:${userId}`;
+  const cached = await cache.get<Role>(cacheKey);
+  if (cached) return cached;
+
   const server = await db.query.servers.findFirst({
     where: eq(servers.id, guildId),
   });
 
   if (server && server.ownerId === userId) {
+    await cache.set(cacheKey, "admin", ROLE_CACHE_TTL);
     return "admin";
   }
 
@@ -25,7 +32,9 @@ export async function getUserRole(guildId: string, userId: string): Promise<Role
     where: and(eq(serverMemberships.guildId, guildId), eq(serverMemberships.userId, userId)),
   });
 
-  return (membership?.role as Role) || "developer";
+  const role = (membership?.role as Role) || "viewer";
+  await cache.set(cacheKey, role, ROLE_CACHE_TTL);
+  return role;
 }
 
 export function hasPermission(userRole: Role, requiredRole: Role): boolean {

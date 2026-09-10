@@ -9,6 +9,7 @@
     "build": "tsc"
   },
   "dependencies": {
+    "@devpulse/cache": "workspace:*",
     "@devpulse/config": "workspace:*",
     "@devpulse/core": "workspace:*",
     "@devpulse/database": "workspace:*",

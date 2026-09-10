@@ -63,7 +63,7 @@ export const serverMemberships = sqliteTable(
       .references(() => users.id, { onDelete: "cascade" }),
     role: text("role", { enum: ["admin", "lead", "developer", "viewer"] })
       .notNull()
-      .default("developer"),
+      .default("viewer"),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .notNull()
       .default(sql`(unixepoch() * 1000)`),

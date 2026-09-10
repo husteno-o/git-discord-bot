@@ -225,6 +225,7 @@
       "name": "@devpulse/permissions",
       "version": "1.0.0",
       "dependencies": {
+        "@devpulse/cache": "workspace:*",
         "@devpulse/config": "workspace:*",
         "@devpulse/core": "workspace:*",
         "@devpulse/database": "workspace:*",

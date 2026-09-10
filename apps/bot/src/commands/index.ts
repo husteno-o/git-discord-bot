@@ -11,6 +11,7 @@ import { investigateCommand } from "./investigate.js";
 import { prCommand } from "./pr.js";
 import { releaseCommand } from "./release.js";
 import { repoCommand } from "./repo.js";
+import { roleCommand } from "./role.js";
 import { searchCommand } from "./search.js";
 import { securityCommand } from "./security.js";
 import { settingsCommand } from "./settings.js";
@@ -42,6 +43,7 @@ export const commands: Command[] = [
   askCommand,
   toolsCommand,
   settingsCommand,
+  roleCommand,
   helpCommand,
 ];
 
