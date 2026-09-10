@@ -5,6 +5,7 @@ import { db, users } from "@devpulse/database";
 import { logger } from "@devpulse/logger";
 import { metricsCollector } from "@devpulse/monitoring";
 import { encryptSecret } from "@devpulse/security";
+import { createHmac, timingSafeEqual } from "crypto";
 import { eq, sql } from "drizzle-orm";
 import Fastify, { type FastifyBaseLogger, type FastifyInstance } from "fastify";
 
@@ -122,6 +123,83 @@ export function buildServer(options?: ServerOptions): FastifyInstance {
   server.get("/metrics/prometheus", async (_req, reply) => {
     reply.header("Content-Type", "text/plain; version=0.0.4; charset=utf-8");
     return metricsCollector.getPrometheusMetrics();
+  });
+
+  // --------------------------------------------------------------------------
+  // GitHub Webhook Endpoint
+  // --------------------------------------------------------------------------
+  server.post("/webhooks/github", async (req, reply) => {
+    const signature = req.headers["x-hub-signature-256"] as string | undefined;
+    const event = req.headers["x-github-event"] as string | undefined;
+    const deliveryId = req.headers["x-github-delivery"] as string | undefined;
+
+    if (!event) {
+      return reply.status(400).send({ error: "Missing X-GitHub-Event header" });
+    }
+
+    // Verify webhook signature if secret is configured
+    if (config.GITHUB_WEBHOOK_SECRET && signature) {
+      const payload = JSON.stringify(req.body);
+      const expectedSig = `sha256=${createHmac("sha256", config.GITHUB_WEBHOOK_SECRET).update(payload).digest("hex")}`;
+      const sigBytes = Buffer.from(signature);
+      const expectedBytes = Buffer.from(expectedSig);
+
+      if (sigBytes.length !== expectedBytes.length || !timingSafeEqual(sigBytes, expectedBytes)) {
+        logger.warn({ deliveryId, event }, "Webhook signature verification failed");
+        return reply.status(401).send({ error: "Invalid signature" });
+      }
+    }
+
+    const payload = req.body as Record<string, unknown>;
+    const repo = (payload.repository as { full_name?: string })?.full_name || "unknown";
+
+    logger.info({ event, repo, deliveryId }, "GitHub webhook received");
+
+    // Store event for deduplication
+    const eventId = `webhook:${deliveryId || Date.now()}:${event}`;
+    const existing = await cache.get(eventId);
+    if (existing) {
+      return reply.status(200).send({ status: "duplicate" });
+    }
+    await cache.set(eventId, "1", 3600);
+
+    // Process event type
+    switch (event) {
+      case "release": {
+        const action = payload.action as string;
+        const release = payload.release as { tag_name?: string; html_url?: string } | undefined;
+        if (action === "published" && release) {
+          logger.info({ repo, tag: release.tag_name }, "New release published");
+        }
+        break;
+      }
+      case "pull_request": {
+        const action = payload.action as string;
+        const pr = payload.pull_request as { number?: number; title?: string } | undefined;
+        if (action === "opened" && pr) {
+          logger.info({ repo, pr: pr.number, title: pr.title }, "New PR opened");
+        }
+        break;
+      }
+      case "issues": {
+        const action = payload.action as string;
+        const issue = payload.issue as { number?: number; title?: string } | undefined;
+        if (action === "opened" && issue) {
+          logger.info({ repo, issue: issue.number, title: issue.title }, "New issue opened");
+        }
+        break;
+      }
+      case "push": {
+        const commits = payload.commits as Array<{ message?: string }> | undefined;
+        const branch = (payload.ref as string)?.replace("refs/heads/", "");
+        logger.info({ repo, branch, commitCount: commits?.length || 0 }, "Push received");
+        break;
+      }
+      default:
+        logger.debug({ event, repo }, "Unhandled webhook event type");
+    }
+
+    return reply.status(200).send({ status: "ok", event, repo });
   });
 
   // --------------------------------------------------------------------------

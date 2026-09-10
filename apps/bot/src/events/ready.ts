@@ -2,7 +2,7 @@ import { db, notifications } from "@devpulse/database";
 import { initDatabase } from "@devpulse/database";
 import { logger } from "@devpulse/logger";
 import type { MonitorCheckOutcome } from "@devpulse/monitoring";
-import { type DependencyAlert, type DueReminder, type WatchNotificationEvent, scheduler } from "@devpulse/scheduler";
+import { type DependencyAlert, type DueReminder, type NewsDigestItem, type WatchNotificationEvent, scheduler } from "@devpulse/scheduler";
 import {
   ActivityType,
   ApplicationIntegrationType,
@@ -181,6 +181,29 @@ export async function handleReady(client: Client<true>): Promise<void> {
       }
     } catch (err: unknown) {
       logger.error({ err }, "Failed to deliver dependency alert");
+    }
+  });
+
+  scheduler.setNewsDigestHandler(async (items: NewsDigestItem[]) => {
+    try {
+      // Post to all guilds that have notification channels
+      for (const [, guild] of client.guilds.cache) {
+        const channel = guild.systemChannel || guild.channels.cache.find((c) => c.isTextBased() && "send" in c);
+        if (!channel || !("send" in channel)) continue;
+
+        const lines = items.slice(0, 6).map((item, i) =>
+          `**${i + 1}. [${item.title}](${item.url})**\n${item.summary}`,
+        );
+
+        const embed = createBaseEmbed(`${NF.flame} Daily Dev News Digest`)
+          .setColor(0xf5a97f)
+          .setDescription(lines.join("\n\n"))
+          .setFooter({ text: "GITBOT News Digest • Powered by Hacker News" });
+
+        await (channel as SendableChannel).send({ embeds: [embed] }).catch(() => {});
+      }
+    } catch (err: unknown) {
+      logger.error({ err }, "Failed to deliver news digest");
     }
   });
 

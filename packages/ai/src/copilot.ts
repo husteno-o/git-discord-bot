@@ -126,11 +126,14 @@ export class AiCopilotService {
 
     if (isAiOnline) {
       try {
+        // Paginate: send up to 25 files with shorter patches for large PRs
+        const maxFiles = Math.min(files.length, 25);
+        const patchLimit = files.length > 15 ? 800 : 1200;
         const patchBundle = files
-          .slice(0, 10)
+          .slice(0, maxFiles)
           .map(
             (f) =>
-              `### File: ${f.filename} (${f.status}, +${f.additions} -${f.deletions})\n\`\`\`diff\n${f.patch ? f.patch.slice(0, 1200) : "Binary or no diff"}\n\`\`\``,
+              `### File: ${f.filename} (${f.status}, +${f.additions} -${f.deletions})\n\`\`\`diff\n${f.patch ? f.patch.slice(0, patchLimit) : "Binary or no diff"}\n\`\`\``,
           )
           .join("\n\n");
 

@@ -50,6 +50,7 @@ export const ConfigSchema = z.object({
   GITHUB_CLIENT_ID: z.string().optional(),
   GITHUB_CLIENT_SECRET: z.string().optional(),
   GITHUB_REDIRECT_URI: z.string().optional(),
+  GITHUB_WEBHOOK_SECRET: z.string().optional(),
 
   // Optional AI integration
   // spark = OpenCode Zen (spark-1.3) → Command Code (longcat-2.0:free) fallback chain

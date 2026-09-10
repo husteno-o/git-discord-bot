@@ -1411,6 +1411,55 @@ export class GitHubClient {
     }
   }
 
+  async createIssue(
+    repoInput: string,
+    title: string,
+    body: string,
+    labels: string[] = [],
+    assignee?: string,
+  ): Promise<{ number: number; htmlUrl: string }> {
+    const { owner, repo } = this.parseRepoInput(repoInput);
+    const payload: Record<string, unknown> = { title, body };
+    if (labels.length > 0) payload.labels = labels;
+    if (assignee) payload.assignees = [assignee];
+    const result = await this.request<{ number: number; html_url: string }>(
+      `/repos/${owner}/${repo}/issues`,
+      { method: "POST", body: payload },
+    );
+    return { number: result.number, htmlUrl: result.html_url };
+  }
+
+  async closeIssue(
+    repoInput: string,
+    issueNumber: number,
+    comment?: string,
+  ): Promise<{ htmlUrl: string }> {
+    const { owner, repo } = this.parseRepoInput(repoInput);
+    await this.request(`/repos/${owner}/${repo}/issues/${issueNumber}`, {
+      method: "PATCH",
+      body: { state: "closed" },
+    });
+    if (comment) {
+      await this.request(`/repos/${owner}/${repo}/issues/${issueNumber}/comments`, {
+        method: "POST",
+        body: { body: comment },
+      });
+    }
+    return { htmlUrl: `https://github.com/${repoInput}/issues/${issueNumber}` };
+  }
+
+  async reopenIssue(
+    repoInput: string,
+    issueNumber: number,
+  ): Promise<{ htmlUrl: string }> {
+    const { owner, repo } = this.parseRepoInput(repoInput);
+    await this.request(`/repos/${owner}/${repo}/issues/${issueNumber}`, {
+      method: "PATCH",
+      body: { state: "open" },
+    });
+    return { htmlUrl: `https://github.com/${repoInput}/issues/${issueNumber}` };
+  }
+
   async getUser(username: string): Promise<GitHubUser> {
     const cleanUser = username.replace(/^@/, "").trim();
     const cacheKey = `gh:user:${cleanUser.toLowerCase()}`;

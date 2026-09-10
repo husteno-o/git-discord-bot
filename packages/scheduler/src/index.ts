@@ -15,6 +15,13 @@ export interface DependencyAlert {
   outdatedPackages: string[];
 }
 
+export interface NewsDigestItem {
+  title: string;
+  url: string;
+  source: string;
+  summary: string;
+}
+
 export interface DueReminder {
   id: string;
   guildId: string;
@@ -313,6 +320,38 @@ export class WatchService {
     }
     return alerts;
   }
+
+  async fetchNewsDigest(): Promise<NewsDigestItem[]> {
+    try {
+      const cacheKey = "news:digest:latest";
+      const cached = await cache.get<NewsDigestItem[]>(cacheKey);
+      if (cached && cached.length > 0) return cached;
+
+      const response = await fetch(
+        "https://hn.algolia.com/api/v1/search_by_date?query=programming&tags=story&hitsPerPage=10",
+      );
+      if (!response.ok) return [];
+
+      const data = (await response.json()) as { hits?: Array<{ title?: string; url?: string; points?: number; author?: string; created_at?: string }> };
+      const items: NewsDigestItem[] = (data.hits || [])
+        .filter((h) => h.title && h.url)
+        .slice(0, 8)
+        .map((h) => ({
+          title: h.title!,
+          url: h.url!,
+          source: "Hacker News",
+          summary: `${h.points || 0} points by @${h.author || "unknown"}`,
+        }));
+
+      if (items.length > 0) {
+        await cache.set(cacheKey, items, 900);
+      }
+      return items;
+    } catch (err: unknown) {
+      logger.warn({ err }, "Failed to fetch news digest");
+      return [];
+    }
+  }
 }
 
 export const watchService = new WatchService();
@@ -324,6 +363,7 @@ export class SchedulerRunner {
   private onMonitorAlert?: (outcome: MonitorCheckOutcome) => Promise<void>;
   private onWatchEvent?: (event: WatchNotificationEvent) => Promise<void>;
   private onDependencyAlert?: (alerts: DependencyAlert[]) => Promise<void>;
+  private onNewsDigest?: (items: NewsDigestItem[]) => Promise<void>;
 
   setReminderHandler(handler: (reminder: DueReminder) => Promise<void>) {
     this.onReminderDue = handler;
@@ -339,6 +379,10 @@ export class SchedulerRunner {
 
   setDependencyAlertHandler(handler: (alerts: DependencyAlert[]) => Promise<void>) {
     this.onDependencyAlert = handler;
+  }
+
+  setNewsDigestHandler(handler: (items: NewsDigestItem[]) => Promise<void>) {
+    this.onNewsDigest = handler;
   }
 
   start(intervalMs = 30000) {
@@ -438,6 +482,23 @@ export class SchedulerRunner {
           logger.error({ err }, "Error checking dependency alerts");
         } finally {
           await cache.releaseLock("scheduler:deps:tick");
+        }
+      }
+    }
+
+    // 5. News digest (daily, only if handler set)
+    if (this.onNewsDigest) {
+      const newsLock = await cache.acquireLock("scheduler:news:tick", 86400);
+      if (newsLock) {
+        try {
+          const items = await watchService.fetchNewsDigest();
+          if (items.length > 0) {
+            await this.onNewsDigest(items);
+          }
+        } catch (err: unknown) {
+          logger.error({ err }, "Error fetching news digest");
+        } finally {
+          await cache.releaseLock("scheduler:news:tick");
         }
       }
     }

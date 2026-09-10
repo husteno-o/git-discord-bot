@@ -8,6 +8,7 @@ import { connectCommand } from "./connect.js";
 import { helpCommand } from "./help.js";
 import { homeCommand } from "./home.js";
 import { investigateCommand } from "./investigate.js";
+import { issueCommand } from "./issue.js";
 import { prCommand } from "./pr.js";
 import { releaseCommand } from "./release.js";
 import { repoCommand } from "./repo.js";
@@ -15,6 +16,7 @@ import { roleCommand } from "./role.js";
 import { searchCommand } from "./search.js";
 import { securityCommand } from "./security.js";
 import { settingsCommand } from "./settings.js";
+import { standupCommand } from "./standup.js";
 import { teamCommand } from "./team.js";
 import { toolsCommand } from "./tools.js";
 import { trendingCommand } from "./trending.js";
@@ -44,6 +46,8 @@ export const commands: Command[] = [
   toolsCommand,
   settingsCommand,
   roleCommand,
+  issueCommand,
+  standupCommand,
   helpCommand,
 ];
 
