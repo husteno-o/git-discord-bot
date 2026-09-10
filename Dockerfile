@@ -2,7 +2,7 @@
 FROM oven/bun:1.4.0 AS base
 WORKDIR /app
 
-# Install dependencies into temp folder
+# Install dependencies - optimized for caching
 FROM base AS install
 RUN mkdir -p /temp/prod
 COPY package.json bun.lock /temp/prod/
@@ -10,14 +10,14 @@ COPY packages /temp/prod/packages/
 COPY apps /temp/prod/apps/
 RUN cd /temp/prod && bun install --frozen-lockfile
 
-# Build stage
+# Build stage - only copy what's needed
 FROM base AS build
 RUN apt-get update && apt-get install -y zip && rm -rf /var/lib/apt/lists/*
 COPY --from=install /temp/prod /app
 COPY . .
 RUN bun run build
 
-# Production runner
+# Production runner - minimal final image
 FROM base AS runner
 WORKDIR /app
 COPY --from=build /app .

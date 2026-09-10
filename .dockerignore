@@ -1,0 +1,68 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+.next/
+.nuxt/
+output/
+
+# Environment and config
+.env
+.env.*
+!.env.example
+
+# Database files
+*.db
+*.db-shm
+*.db-wal
+
+# Git and IDE
+.git/
+.gitignore
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Documentation
+*.md
+docs/
+!README.md
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Testing
+coverage/
+.nyc_output/
+*.test.*
+*.spec.*
+vitest.config.ts
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.log
+
+# Large files
+*.zip
+*.tar.gz
+*.rar
+
+# Monorepo lock files (use root bun.lock)
+packages/*/bun.lock
+apps/*/bun.lock
+
+# Cloudflare
+.dev.vars
+.wrangler/
