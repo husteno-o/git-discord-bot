@@ -12,6 +12,7 @@ RUN cd /temp/prod && bun install --frozen-lockfile
 
 # Build stage
 FROM base AS build
+RUN apt-get update && apt-get install -y zip && rm -rf /var/lib/apt/lists/*
 COPY --from=install /temp/prod /app
 COPY . .
 RUN bun run build
