@@ -241,3 +241,109 @@ export class MonitoringService {
 }
 
 export const monitoringService = new MonitoringService();
+
+class MetricsCollector {
+  private commandCounts = new Map<string, { count: number; totalMs: number; errors: number }>();
+  private cacheHits = 0;
+  private cacheMisses = 0;
+  private aiRequests = 0;
+  private aiErrors = 0;
+  private githubApiCalls = 0;
+  private githubApiErrors = 0;
+  private startedAt = Date.now();
+
+  recordCommand(name: string, durationMs: number, success: boolean): void {
+    const existing = this.commandCounts.get(name) || { count: 0, totalMs: 0, errors: 0 };
+    existing.count++;
+    existing.totalMs += durationMs;
+    if (!success) existing.errors++;
+    this.commandCounts.set(name, existing);
+  }
+
+  recordCacheHit(): void { this.cacheHits++; }
+  recordCacheMiss(): void { this.cacheMisses++; }
+  recordAiRequest(): void { this.aiRequests++; }
+  recordAiError(): void { this.aiErrors++; }
+  recordGithubApiCall(): void { this.githubApiCalls++; }
+  recordGithubApiError(): void { this.githubApiErrors++; }
+
+  getSnapshot(): Record<string, unknown> {
+    const commands: Record<string, unknown> = {};
+    for (const [name, data] of this.commandCounts) {
+      commands[name] = {
+        total: data.count,
+        avgMs: Math.round(data.totalMs / data.count),
+        errors: data.errors,
+        errorRate: data.count > 0 ? `${((data.errors / data.count) * 100).toFixed(1)}%` : "0%",
+      };
+    }
+
+    const uptimeMs = Date.now() - this.startedAt;
+    return {
+      uptimeSeconds: Math.floor(uptimeMs / 1000),
+      uptimeHuman: `${Math.floor(uptimeMs / 3600000)}h ${Math.floor((uptimeMs % 3600000) / 60000)}m`,
+      commands,
+      commandSummary: {
+        totalCommands: Array.from(this.commandCounts.values()).reduce((s, c) => s + c.count, 0),
+        totalErrors: Array.from(this.commandCounts.values()).reduce((s, c) => s + c.errors, 0),
+        avgLatencyMs: Math.round(
+          Array.from(this.commandCounts.values()).reduce((s, c) => s + c.totalMs, 0) /
+            Math.max(Array.from(this.commandCounts.values()).reduce((s, c) => s + c.count, 0), 1),
+        ),
+      },
+      cache: {
+        hits: this.cacheHits,
+        misses: this.cacheMisses,
+        hitRate: this.cacheHits + this.cacheMisses > 0
+          ? `${((this.cacheHits / (this.cacheHits + this.cacheMisses)) * 100).toFixed(1)}%`
+          : "N/A",
+      },
+      ai: {
+        requests: this.aiRequests,
+        errors: this.aiErrors,
+        errorRate: this.aiRequests > 0
+          ? `${((this.aiErrors / this.aiRequests) * 100).toFixed(1)}%`
+          : "0%",
+      },
+      github: {
+        apiCalls: this.githubApiCalls,
+        apiErrors: this.githubApiErrors,
+      },
+    };
+  }
+
+  getPrometheusMetrics(): string {
+    const lines: string[] = [];
+    lines.push("# HELP gitbot_commands_total Total number of commands executed");
+    lines.push("# TYPE gitbot_commands_total counter");
+    for (const [name, data] of this.commandCounts) {
+      lines.push(`gitbot_commands_total{command="${name}"} ${data.count}`);
+    }
+
+    lines.push("# HELP gitbot_command_duration_ms Average command duration");
+    lines.push("# TYPE gitbot_command_duration_ms gauge");
+    for (const [name, data] of this.commandCounts) {
+      lines.push(`gitbot_command_duration_ms{command="${name}"} ${Math.round(data.totalMs / data.count)}`);
+    }
+
+    lines.push("# HELP gitbot_command_errors_total Total command errors");
+    lines.push("# TYPE gitbot_command_errors_total counter");
+    for (const [name, data] of this.commandCounts) {
+      lines.push(`gitbot_command_errors_total{command="${name}"} ${data.errors}`);
+    }
+
+    lines.push(`# HELP gitbot_cache_hits_total Cache hits`);
+    lines.push(`# TYPE gitbot_cache_hits_total counter`);
+    lines.push(`gitbot_cache_hits_total ${this.cacheHits}`);
+    lines.push(`# HELP gitbot_cache_misses_total Cache misses`);
+    lines.push(`# TYPE gitbot_cache_misses_total counter`);
+    lines.push(`gitbot_cache_misses_total ${this.cacheMisses}`);
+    lines.push(`# HELP gitbot_uptime_seconds Uptime in seconds`);
+    lines.push(`# TYPE gitbot_uptime_seconds gauge`);
+    lines.push(`gitbot_uptime_seconds ${Math.floor((Date.now() - this.startedAt) / 1000)}`);
+
+    return lines.join("\n");
+  }
+}
+
+export const metricsCollector = new MetricsCollector();

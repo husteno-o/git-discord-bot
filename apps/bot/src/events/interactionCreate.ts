@@ -3,6 +3,7 @@ import { config } from "@devpulse/config";
 import { RateLimitError } from "@devpulse/core";
 import { computeRepoDashboardMetrics, githubClient } from "@devpulse/github";
 import { logger } from "@devpulse/logger";
+import { metricsCollector } from "@devpulse/monitoring";
 import {
   type ButtonInteraction,
   type ChatInputCommandInteraction,
@@ -82,9 +83,12 @@ async function handleSlashCommand(interaction: ChatInputCommandInteraction): Pro
 
   log.info("Executing slash command");
 
+  const startTime = Date.now();
   try {
     await command.execute(interaction);
+    metricsCollector.recordCommand(interaction.commandName, Date.now() - startTime, true);
   } catch (err: unknown) {
+    metricsCollector.recordCommand(interaction.commandName, Date.now() - startTime, false);
     log.error({ err }, "Error during command execution");
     const errorEmbed = createErrorEmbed(err instanceof Error ? err : new Error(String(err)));
 

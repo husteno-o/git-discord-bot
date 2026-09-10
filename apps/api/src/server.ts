@@ -3,6 +3,7 @@ import { config } from "@devpulse/config";
 import { formatBytes } from "@devpulse/core";
 import { db, users } from "@devpulse/database";
 import { logger } from "@devpulse/logger";
+import { metricsCollector } from "@devpulse/monitoring";
 import { encryptSecret } from "@devpulse/security";
 import { eq, sql } from "drizzle-orm";
 import Fastify, { type FastifyBaseLogger, type FastifyInstance } from "fastify";
@@ -114,7 +115,13 @@ export function buildServer(options?: ServerOptions): FastifyInstance {
         : {}),
       nodeVersion: process.version,
       platform: process.platform,
+      detailed: metricsCollector.getSnapshot(),
     };
+  });
+
+  server.get("/metrics/prometheus", async (_req, reply) => {
+    reply.header("Content-Type", "text/plain; version=0.0.4; charset=utf-8");
+    return metricsCollector.getPrometheusMetrics();
   });
 
   // --------------------------------------------------------------------------

@@ -25,6 +25,7 @@ import type {
   GitHubSecurityAdvisory,
   GitHubUser,
   GitHubWorkflow,
+  GitHubWorkflowJob,
   GitHubWorkflowRun,
   InvestigationTimeline,
   InvestigationTimelineEvent,
@@ -989,6 +990,38 @@ export class GitHubClient {
       token: userToken,
     });
     return true;
+  }
+
+  async getWorkflowRunJobs(repoInput: string, runId: number): Promise<GitHubWorkflowJob[]> {
+    const { owner, repo } = this.parseRepoInput(repoInput);
+    const raw = await this.request<{ jobs?: unknown[] }>(
+      `/repos/${owner}/${repo}/actions/runs/${runId}/jobs`,
+    );
+    return (raw.jobs || []).map((j) => {
+      const job = j as {
+        id: number;
+        name: string;
+        status: string;
+        conclusion: string | null;
+        started_at: string;
+        completed_at: string | null;
+        steps?: { name: string; status: string; conclusion: string | null; number: number }[];
+      };
+      return {
+        id: job.id,
+        name: job.name,
+        status: job.status,
+        conclusion: job.conclusion,
+        startedAt: job.started_at,
+        completedAt: job.completed_at,
+        steps: (job.steps || []).map((s) => ({
+          name: s.name,
+          status: s.status,
+          conclusion: s.conclusion,
+          number: s.number,
+        })),
+      };
+    });
   }
 
   // 8. SECURITY

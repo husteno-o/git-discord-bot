@@ -9,7 +9,7 @@ export const actionsCommand: Command = {
   data: new SlashCommandBuilder()
     .setName("actions")
     .setDescription(
-      "GitHub Actions Control Center: inspect CI/CD workflows, runs, and trigger reruns",
+      "GitHub Actions Control Center: inspect CI/CD workflows, runs, logs, and trigger reruns",
     )
     .addSubcommand((sub) =>
       sub
@@ -25,6 +25,17 @@ export const actionsCommand: Command = {
         .setDescription("List recent GitHub Actions workflow runs")
         .addStringOption((opt) =>
           opt.setName("repo").setDescription("Repository format 'owner/repo'").setRequired(true),
+        ),
+    )
+    .addSubcommand((sub) =>
+      sub
+        .setName("logs")
+        .setDescription("View jobs and step details for a workflow run")
+        .addStringOption((opt) =>
+          opt.setName("repo").setDescription("Repository format 'owner/repo'").setRequired(true),
+        )
+        .addIntegerOption((opt) =>
+          opt.setName("run_id").setDescription("Workflow run ID to inspect").setRequired(true),
         ),
     )
     .addSubcommand((sub) =>
@@ -68,12 +79,75 @@ export const actionsCommand: Command = {
         const lines = runs.map((r) => {
           const status =
             r.conclusion === "success" ? "✅" : r.conclusion === "failure" ? "❌" : "🟡";
-          return `• [\`#${r.runNumber}\`](${r.htmlUrl}) **${r.name}** — ${status} \`${r.conclusion || r.status}\` on \`${r.headBranch}\` (\`${r.headSha}\`)`;
+          return `• [\`#${r.runNumber}\`](${r.htmlUrl}) **${r.name}** — ${status} \`${r.conclusion || r.status}\` on \`${r.headBranch}\` (\`${r.headSha.slice(0, 7)}\`)`;
         });
 
         const embed = createBaseEmbed(
           `${NF.robot} Recent Workflow Runs: ${repoInput}`,
         ).setDescription(lines.length > 0 ? lines.join("\n") : "No recent workflow runs found.");
+        await interaction.editReply({ embeds: [embed] });
+        return;
+      }
+
+      if (subcommand === "logs") {
+        const runId = interaction.options.getInteger("run_id", true);
+        const jobs = await githubClient.getWorkflowRunJobs(repoInput, runId);
+
+        if (jobs.length === 0) {
+          await interaction.editReply({
+            embeds: [createBaseEmbed(`${NF.warning} No Jobs Found`).setDescription(
+              `No jobs found for workflow run \`#${runId}\`.`,
+            )],
+          });
+          return;
+        }
+
+        const jobLines: string[] = [];
+        let failedStep = "";
+
+        for (const job of jobs) {
+          const icon =
+            job.conclusion === "success"
+              ? "✅"
+              : job.conclusion === "failure"
+                ? "❌"
+                : job.conclusion === "cancelled"
+                  ? "⚪"
+                  : "🟡";
+
+          jobLines.push(`**${icon} ${job.name}** — \`${job.conclusion || job.status}\``);
+
+          if (job.conclusion === "failure" && job.steps) {
+            for (const step of job.steps) {
+              if (step.conclusion === "failure") {
+                failedStep = `${job.name} → Step ${step.number}: ${step.name}`;
+                jobLines.push(`  ↳ ❌ **${step.name}** (Step #${step.number})`);
+              }
+            }
+          }
+        }
+
+        const embed = createBaseEmbed(`${NF.robot} CI Logs: ${repoInput} #${runId}`)
+          .setDescription(jobLines.join("\n"));
+
+        if (failedStep) {
+          embed.addFields({
+            name: `${NF.warning} Failed Step`,
+            value: `\`${failedStep}\``,
+            inline: false,
+          });
+        }
+
+        const failedRun = jobs.find((j) => j.conclusion === "failure");
+        if (failedRun) {
+          embed.addFields({
+            name: `${NF.bug} Diagnosis`,
+            value: `**${failedRun.name}** failed. Check the [full logs on GitHub](https://github.com/${repoInput}/actions/runs/${runId}) for step-level details.`,
+            inline: false,
+          });
+        }
+
+        embed.setFooter({ text: `GITBOT CI Log Viewer • ${jobs.length} job(s)` });
         await interaction.editReply({ embeds: [embed] });
         return;
       }

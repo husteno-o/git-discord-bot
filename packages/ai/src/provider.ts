@@ -1,12 +1,13 @@
 import { config } from "@devpulse/config";
 import { AppError } from "@devpulse/core";
+import { logger } from "@devpulse/logger";
 
 export interface AIProvider {
   readonly name: string;
   isEnabled(): boolean;
   generateResponse(
     prompt: string,
-    options?: { system?: string; maxTokens?: number },
+    options?: { system?: string; maxTokens?: number; temperature?: number },
   ): Promise<string>;
 }
 
@@ -31,6 +32,8 @@ export class GenericOpenAiCompatibleProvider implements AIProvider {
   private apiKey: string;
   private baseUrl: string;
   private model: string;
+  private maxRetries = 3;
+  private retryDelayMs = 1000;
 
   constructor(
     name: string,
@@ -50,7 +53,7 @@ export class GenericOpenAiCompatibleProvider implements AIProvider {
 
   async generateResponse(
     prompt: string,
-    options: { system?: string; maxTokens?: number } = {},
+    options: { system?: string; maxTokens?: number; temperature?: number } = {},
   ): Promise<string> {
     if (!this.apiKey) {
       throw new AppError("AI API key is missing.", "AI_NOT_CONFIGURED", 400);
@@ -66,26 +69,50 @@ export class GenericOpenAiCompatibleProvider implements AIProvider {
       { role: "user", content: prompt },
     ];
 
-    const response = await fetch(`${this.baseUrl}/chat/completions`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${this.apiKey}`,
-      },
-      body: JSON.stringify({
-        model: this.model,
-        messages,
-        max_tokens: options.maxTokens || 1024,
-      }),
-    });
+    let lastError: Error | null = null;
 
-    if (!response.ok) {
-      const errText = await response.text();
-      throw new AppError(`AI provider error: ${errText}`, "AI_REQUEST_FAILED", 502);
+    for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
+      try {
+        const response = await fetch(`${this.baseUrl}/chat/completions`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${this.apiKey}`,
+          },
+          body: JSON.stringify({
+            model: this.model,
+            messages,
+            max_tokens: options.maxTokens || 2000,
+            temperature: options.temperature ?? 0.3,
+          }),
+        });
+
+        if (!response.ok) {
+          const errText = await response.text();
+          throw new AppError(`AI provider error: ${errText}`, "AI_REQUEST_FAILED", 502);
+        }
+
+        const data = (await response.json()) as {
+          choices?: { message?: { content?: string } }[];
+        };
+        const content = data.choices?.[0]?.message?.content;
+        if (!content) {
+          throw new AppError("AI returned empty response", "AI_EMPTY_RESPONSE", 502);
+        }
+        return content;
+      } catch (err: unknown) {
+        lastError = err instanceof Error ? err : new Error(String(err));
+        if (attempt < this.maxRetries) {
+          logger.warn(
+            { attempt, provider: this.name, error: lastError.message },
+            "AI request failed, retrying",
+          );
+          await new Promise((r) => setTimeout(r, this.retryDelayMs * attempt));
+        }
+      }
     }
 
-    const data = (await response.json()) as any;
-    return data.choices?.[0]?.message?.content || "No response generated.";
+    throw lastError || new AppError("AI request failed after retries", "AI_RETRY_EXHAUSTED", 502);
   }
 }
 
@@ -99,6 +126,8 @@ export class OpenCodeZenProvider implements AIProvider {
   private apiKey: string | undefined;
   private baseUrl: string;
   private model: string;
+  private maxRetries = 2;
+  private retryDelayMs = 500;
 
   constructor(apiKey?: string, baseUrl = "https://opencode.ai/zen/v1", model = "spark-1.3") {
     this.name = `OpenCode Zen (${model})`;
@@ -113,7 +142,7 @@ export class OpenCodeZenProvider implements AIProvider {
 
   async generateResponse(
     prompt: string,
-    options: { system?: string; maxTokens?: number } = {},
+    options: { system?: string; maxTokens?: number; temperature?: number } = {},
   ): Promise<string> {
     const messages = [
       {
@@ -133,27 +162,47 @@ export class OpenCodeZenProvider implements AIProvider {
       headers.Authorization = `Bearer ${this.apiKey}`;
     }
 
-    const response = await fetch(`${this.baseUrl}/chat/completions`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        model: this.model,
-        messages,
-        max_tokens: options.maxTokens || 1024,
-      }),
-    });
+    let lastError: Error | null = null;
 
-    if (!response.ok) {
-      const errText = await response.text();
-      throw new AppError(
-        `OpenCode Zen API error (${response.status}): ${errText}`,
-        "AI_REQUEST_FAILED",
-        502,
-      );
+    for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
+      try {
+        const response = await fetch(`${this.baseUrl}/chat/completions`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            model: this.model,
+            messages,
+            max_tokens: options.maxTokens || 2000,
+            temperature: options.temperature ?? 0.3,
+          }),
+        });
+
+        if (!response.ok) {
+          const errText = await response.text();
+          throw new AppError(
+            `OpenCode Zen API error (${response.status}): ${errText}`,
+            "AI_REQUEST_FAILED",
+            502,
+          );
+        }
+
+        const data = (await response.json()) as {
+          choices?: { message?: { content?: string } }[];
+        };
+        const content = data.choices?.[0]?.message?.content;
+        if (!content) {
+          throw new AppError("AI returned empty response", "AI_EMPTY_RESPONSE", 502);
+        }
+        return content;
+      } catch (err: unknown) {
+        lastError = err instanceof Error ? err : new Error(String(err));
+        if (attempt < this.maxRetries) {
+          await new Promise((r) => setTimeout(r, this.retryDelayMs * attempt));
+        }
+      }
     }
 
-    const data = (await response.json()) as { choices?: { message?: { content?: string } }[] };
-    return data.choices?.[0]?.message?.content || "No response generated.";
+    throw lastError || new AppError("AI request failed after retries", "AI_RETRY_EXHAUSTED", 502);
   }
 }
 
@@ -167,6 +216,8 @@ export class CommandCodeProvider implements AIProvider {
   readonly name: string;
   private apiKey: string;
   private model: string;
+  private maxRetries = 2;
+  private retryDelayMs = 500;
 
   constructor(apiKey: string, model = "longcat-2.0:free") {
     this.name = `Command Code (${model})`;
@@ -180,7 +231,7 @@ export class CommandCodeProvider implements AIProvider {
 
   async generateResponse(
     prompt: string,
-    options: { system?: string; maxTokens?: number } = {},
+    options: { system?: string; maxTokens?: number; temperature?: number } = {},
   ): Promise<string> {
     if (!this.apiKey) {
       throw new AppError(
@@ -205,27 +256,50 @@ export class CommandCodeProvider implements AIProvider {
       Authorization: `Bearer ${this.apiKey}`,
     };
 
-    const response = await fetch("https://api.commandcode.ai/provider/v1/chat/completions", {
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        model: this.model,
-        messages,
-        max_tokens: options.maxTokens || 1024,
-      }),
-    });
+    let lastError: Error | null = null;
 
-    if (!response.ok) {
-      const errText = await response.text();
-      throw new AppError(
-        `Command Code API error (${response.status}): ${errText}`,
-        "AI_REQUEST_FAILED",
-        502,
-      );
+    for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
+      try {
+        const response = await fetch(
+          "https://api.commandcode.ai/provider/v1/chat/completions",
+          {
+            method: "POST",
+            headers,
+            body: JSON.stringify({
+              model: this.model,
+              messages,
+              max_tokens: options.maxTokens || 2000,
+              temperature: options.temperature ?? 0.3,
+            }),
+          },
+        );
+
+        if (!response.ok) {
+          const errText = await response.text();
+          throw new AppError(
+            `Command Code API error (${response.status}): ${errText}`,
+            "AI_REQUEST_FAILED",
+            502,
+          );
+        }
+
+        const data = (await response.json()) as {
+          choices?: { message?: { content?: string } }[];
+        };
+        const content = data.choices?.[0]?.message?.content;
+        if (!content) {
+          throw new AppError("AI returned empty response", "AI_EMPTY_RESPONSE", 502);
+        }
+        return content;
+      } catch (err: unknown) {
+        lastError = err instanceof Error ? err : new Error(String(err));
+        if (attempt < this.maxRetries) {
+          await new Promise((r) => setTimeout(r, this.retryDelayMs * attempt));
+        }
+      }
     }
 
-    const data = (await response.json()) as { choices?: { message?: { content?: string } }[] };
-    return data.choices?.[0]?.message?.content || "No response generated.";
+    throw lastError || new AppError("AI request failed after retries", "AI_RETRY_EXHAUSTED", 502);
   }
 }
 
@@ -248,7 +322,7 @@ export class FallbackChainProvider implements AIProvider {
 
   async generateResponse(
     prompt: string,
-    options: { system?: string; maxTokens?: number } = {},
+    options: { system?: string; maxTokens?: number; temperature?: number } = {},
   ): Promise<string> {
     const errors: string[] = [];
 
@@ -280,13 +354,11 @@ export function getAiProvider(): AIProvider {
     return new NoopAiProvider();
   }
 
-  // Command Code — standalone provider (longcat-2.0:free)
   if (providerType === "commandcode") {
     if (!apiKey) return new NoopAiProvider();
     return new CommandCodeProvider(apiKey, model || "longcat-2.0:free");
   }
 
-  // OpenCode Zen — standalone provider (spark-1.3)
   if (providerType === "opencode") {
     return new OpenCodeZenProvider(
       apiKey,
@@ -295,7 +367,6 @@ export function getAiProvider(): AIProvider {
     );
   }
 
-  // spark = OpenCode Zen (spark-1.3) with Command Code (longcat-2.0:free) fallback
   if (providerType === "spark") {
     return new FallbackChainProvider([
       new OpenCodeZenProvider(apiKey, baseUrl || "https://opencode.ai/zen/v1", "spark-1.3"),
@@ -303,7 +374,6 @@ export function getAiProvider(): AIProvider {
     ]);
   }
 
-  // All other providers require an API key
   if (!apiKey) {
     return new NoopAiProvider();
   }

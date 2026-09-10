@@ -286,6 +286,21 @@ export interface GitHubWorkflowRun {
   }[];
 }
 
+export interface GitHubWorkflowJob {
+  id: number;
+  name: string;
+  status: string;
+  conclusion: string | null;
+  startedAt: string;
+  completedAt: string | null;
+  steps: {
+    name: string;
+    status: string;
+    conclusion: string | null;
+    number: number;
+  }[];
+}
+
 export interface GitHubSecurityAdvisory {
   ghsaId: string;
   cveId: string | null;

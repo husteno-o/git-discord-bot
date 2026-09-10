@@ -8,7 +8,54 @@ import type {
   GitHubRepo,
 } from "@devpulse/github";
 import { logger } from "@devpulse/logger";
+import { z } from "zod";
 import { aiProvider } from "./provider.js";
+
+const AiCodeReviewFindingSchema = z.object({
+  category: z.enum(["security", "performance", "bug", "style"]),
+  severity: z.enum(["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]),
+  title: z.string().min(1),
+  file: z.string(),
+  line: z.number().optional(),
+  description: z.string().min(1),
+  suggestion: z.string().optional(),
+});
+
+const AiCodeReviewResultSchema = z.object({
+  summary: z.string().min(1),
+  riskLevel: z.enum(["LOW", "MEDIUM", "HIGH", "CRITICAL"]),
+  score: z.number().min(0).max(100),
+  findings: z.array(AiCodeReviewFindingSchema),
+  approvedForMerge: z.boolean(),
+  diffProposal: z.string().optional(),
+});
+
+const AiSummaryResultSchema = z.object({
+  headline: z.string().min(1),
+  features: z.array(z.string()),
+  fixes: z.array(z.string()),
+  perfAndChores: z.array(z.string()),
+  topContributors: z.array(z.string()),
+});
+
+const AiBugfixResultSchema = z.object({
+  rootCause: z.string().min(1),
+  targetFile: z.string(),
+  targetLine: z.number().optional(),
+  proposedPatch: z.string().optional().default(""),
+  explanation: z.string().min(1),
+  confidence: z.enum(["HIGH", "MEDIUM", "LOW"]),
+  testSuggestions: z.array(z.string()),
+});
+
+const AiExplanationResultSchema = z.object({
+  summary: z.string().min(1),
+  architectureRole: z.string().min(1),
+  keyComponents: z.array(z.object({ name: z.string(), purpose: z.string() })),
+  complexity: z.enum(["Low", "Moderate", "High"]),
+  dependencies: z.array(z.string()),
+  securityConsiderations: z.array(z.string()),
+});
 
 export interface AiCodeReviewFinding {
   category: "security" | "performance" | "bug" | "style";
@@ -23,7 +70,7 @@ export interface AiCodeReviewFinding {
 export interface AiCodeReviewResult {
   summary: string;
   riskLevel: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
-  score: number; // 0-100
+  score: number;
   findings: AiCodeReviewFinding[];
   approvedForMerge: boolean;
   diffProposal?: string;
@@ -130,9 +177,12 @@ Respond strictly with valid JSON conforming to:
 
         const jsonMatch = raw.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
-          const parsed = JSON.parse(jsonMatch[0]) as AiCodeReviewResult;
-          parsed.poweredBy = aiProvider.name;
-          return parsed;
+          const rawParsed = JSON.parse(jsonMatch[0]);
+          const result = AiCodeReviewResultSchema.safeParse(rawParsed);
+          if (result.success) {
+            return { ...result.data, poweredBy: aiProvider.name };
+          }
+          logger.warn({ issues: result.error.issues }, "AI review response failed validation");
         }
       } catch (err: unknown) {
         logger.warn(
@@ -468,23 +518,27 @@ Respond strictly in valid JSON conforming to:
 
         const jsonMatch = raw.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
-          const parsed = JSON.parse(jsonMatch[0]);
-          return {
-            timeframe,
-            headline: parsed.headline || `High velocity progress in ${repo.name} this ${timeframe}`,
-            features: (parsed.features || []).slice(0, 4),
-            fixes: (parsed.fixes || []).slice(0, 4),
-            perfAndChores: (parsed.perfAndChores || []).slice(0, 4),
-            topContributors: (parsed.topContributors || Array.from(authors).slice(0, 4)).map(
-              (a: string) => (a.startsWith("@") ? a : `@${a}`),
-            ),
-            stats: {
-              commitsCount: commits.length,
-              prsMergedCount: prs.filter((p) => p.state === "closed").length,
-              activeAuthorsCount: authors.size,
-            },
-            poweredBy: aiProvider.name,
-          };
+          const rawParsed = JSON.parse(jsonMatch[0]);
+          const result = AiSummaryResultSchema.safeParse(rawParsed);
+          if (result.success) {
+            return {
+              timeframe,
+              headline: result.data.headline,
+              features: result.data.features.slice(0, 4),
+              fixes: result.data.fixes.slice(0, 4),
+              perfAndChores: result.data.perfAndChores.slice(0, 4),
+              topContributors: result.data.topContributors.map(
+                (a: string) => (a.startsWith("@") ? a : `@${a}`),
+              ),
+              stats: {
+                commitsCount: commits.length,
+                prsMergedCount: prs.filter((p) => p.state === "closed").length,
+                activeAuthorsCount: authors.size,
+              },
+              poweredBy: aiProvider.name,
+            };
+          }
+          logger.warn({ issues: result.error.issues }, "AI summary response failed validation");
         }
       } catch (err: unknown) {
         logger.warn(
@@ -581,9 +635,12 @@ Respond strictly in valid JSON conforming to:
 
         const jsonMatch = raw.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
-          const parsed = JSON.parse(jsonMatch[0]) as AiBugfixResult;
-          parsed.poweredBy = aiProvider.name;
-          return parsed;
+          const rawParsed = JSON.parse(jsonMatch[0]);
+          const result = AiBugfixResultSchema.safeParse(rawParsed);
+          if (result.success) {
+            return { ...result.data, poweredBy: aiProvider.name };
+          }
+          logger.warn({ issues: result.error.issues }, "AI bugfix response failed validation");
         }
       } catch (err: unknown) {
         logger.warn({ err }, "LLM bugfix generator failed, using heuristic stack trace analyzer");
@@ -675,9 +732,12 @@ Respond strictly in valid JSON conforming to:
 
         const jsonMatch = raw.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
-          const parsed = JSON.parse(jsonMatch[0]) as AiExplanationResult;
-          parsed.poweredBy = aiProvider.name;
-          return parsed;
+          const rawParsed = JSON.parse(jsonMatch[0]);
+          const result = AiExplanationResultSchema.safeParse(rawParsed);
+          if (result.success) {
+            return { ...result.data, poweredBy: aiProvider.name };
+          }
+          logger.warn({ issues: result.error.issues }, "AI explanation response failed validation");
         }
       } catch (err: unknown) {
         logger.warn({ err }, "LLM code explainer failed, using deterministic AST parser");

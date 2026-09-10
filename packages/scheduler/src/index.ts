@@ -8,6 +8,13 @@ import cronParser from "cron-parser";
 import { and, desc, eq, lte } from "drizzle-orm";
 import type { GitHubRepoEvent } from "@devpulse/github";
 
+export interface DependencyAlert {
+  repoFullName: string;
+  totalCount: number;
+  outdatedCount: number;
+  outdatedPackages: string[];
+}
+
 export interface DueReminder {
   id: string;
   guildId: string;
@@ -282,6 +289,30 @@ export class WatchService {
       return;
     }
   }
+
+  async checkDependencyAlerts(repos: string[]): Promise<DependencyAlert[]> {
+    const alerts: DependencyAlert[] = [];
+    for (const repo of repos) {
+      try {
+        const deps = await githubClient.getDependencies(repo);
+        if (deps.outdatedCount > 0) {
+          const outdatedNames = deps.dependencies
+            .filter((d) => d.isOutdated)
+            .slice(0, 5)
+            .map((d) => `${d.name}@${d.version}`);
+          alerts.push({
+            repoFullName: repo,
+            totalCount: deps.totalCount,
+            outdatedCount: deps.outdatedCount,
+            outdatedPackages: outdatedNames,
+          });
+        }
+      } catch (err: unknown) {
+        logger.warn({ err, repo }, "Failed to check dependencies");
+      }
+    }
+    return alerts;
+  }
 }
 
 export const watchService = new WatchService();
@@ -292,6 +323,7 @@ export class SchedulerRunner {
   private onReminderDue?: (reminder: DueReminder) => Promise<void>;
   private onMonitorAlert?: (outcome: MonitorCheckOutcome) => Promise<void>;
   private onWatchEvent?: (event: WatchNotificationEvent) => Promise<void>;
+  private onDependencyAlert?: (alerts: DependencyAlert[]) => Promise<void>;
 
   setReminderHandler(handler: (reminder: DueReminder) => Promise<void>) {
     this.onReminderDue = handler;
@@ -303,6 +335,10 @@ export class SchedulerRunner {
 
   setWatchEventHandler(handler: (event: WatchNotificationEvent) => Promise<void>) {
     this.onWatchEvent = handler;
+  }
+
+  setDependencyAlertHandler(handler: (alerts: DependencyAlert[]) => Promise<void>) {
+    this.onDependencyAlert = handler;
   }
 
   start(intervalMs = 30000) {
@@ -381,6 +417,27 @@ export class SchedulerRunner {
           logger.error({ err }, "Error checking watch subscriptions");
         } finally {
           await cache.releaseLock("scheduler:watch:tick");
+        }
+      }
+    }
+
+    // 4. Check dependency alerts (hourly, only if handler set)
+    if (this.onDependencyAlert) {
+      const depLock = await cache.acquireLock("scheduler:deps:tick", 3600);
+      if (depLock) {
+        try {
+          const subscriptions = await watchService.getActiveSubscriptions();
+          const uniqueRepos = [...new Set(subscriptions.map((s) => s.target))];
+          if (uniqueRepos.length > 0) {
+            const alerts = await watchService.checkDependencyAlerts(uniqueRepos.slice(0, 10));
+            if (alerts.length > 0) {
+              await this.onDependencyAlert(alerts);
+            }
+          }
+        } catch (err: unknown) {
+          logger.error({ err }, "Error checking dependency alerts");
+        } finally {
+          await cache.releaseLock("scheduler:deps:tick");
         }
       }
     }

@@ -32,9 +32,12 @@ export interface CacheProvider {
 }
 
 export class MemoryCacheProvider implements CacheProvider {
-  private store = new Map<string, { value: unknown; expiresAt?: number }>();
+  private store = new Map<string, { value: unknown; expiresAt?: number; lastAccess: number }>();
   private rateLimits = new Map<string, { count: number; resetAt: number }>();
   private locks = new Set<string>();
+  private readonly MAX_ENTRIES = 2000;
+  private readonly CLEANUP_INTERVAL = 60_000;
+  private lastCleanup = Date.now();
 
   async get<T>(key: string): Promise<T | null> {
     const item = this.store.get(key);
@@ -43,16 +46,41 @@ export class MemoryCacheProvider implements CacheProvider {
       this.store.delete(key);
       return null;
     }
+    item.lastAccess = Date.now();
     return item.value as T;
   }
 
   async set<T>(key: string, value: T, ttlSeconds?: number): Promise<void> {
     const expiresAt = ttlSeconds ? Date.now() + ttlSeconds * 1000 : undefined;
-    this.store.set(key, { value, expiresAt });
+    this.store.set(key, { value, expiresAt, lastAccess: Date.now() });
+    this.maybeEvict();
+    this.maybeCleanup();
   }
 
   async del(key: string): Promise<void> {
     this.store.delete(key);
+  }
+
+  private maybeEvict(): void {
+    if (this.store.size <= this.MAX_ENTRIES) return;
+    const entries = Array.from(this.store.entries());
+    entries.sort((a, b) => a[1].lastAccess - b[1].lastAccess);
+    const toRemove = entries.slice(0, Math.ceil(this.store.size * 0.2));
+    for (const [key] of toRemove) {
+      this.store.delete(key);
+    }
+    logger.debug({ evicted: toRemove.length, remaining: this.store.size }, "Cache LRU eviction");
+  }
+
+  private maybeCleanup(): void {
+    const now = Date.now();
+    if (now - this.lastCleanup < this.CLEANUP_INTERVAL) return;
+    this.lastCleanup = now;
+    for (const [key, item] of this.store) {
+      if (item.expiresAt && now > item.expiresAt) {
+        this.store.delete(key);
+      }
+    }
   }
 
   async acquireLock(key: string, ttlSeconds: number): Promise<boolean> {

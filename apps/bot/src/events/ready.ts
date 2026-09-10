@@ -2,7 +2,7 @@ import { db, notifications } from "@devpulse/database";
 import { initDatabase } from "@devpulse/database";
 import { logger } from "@devpulse/logger";
 import type { MonitorCheckOutcome } from "@devpulse/monitoring";
-import { type DueReminder, type WatchNotificationEvent, scheduler } from "@devpulse/scheduler";
+import { type DependencyAlert, type DueReminder, type WatchNotificationEvent, scheduler } from "@devpulse/scheduler";
 import {
   ActivityType,
   ApplicationIntegrationType,
@@ -145,6 +145,42 @@ export async function handleReady(client: Client<true>): Promise<void> {
         });
     } catch (err: unknown) {
       logger.error({ err, repo: event.repoFullName }, "Failed to deliver watch notification");
+    }
+  });
+
+  scheduler.setDependencyAlertHandler(async (alerts: DependencyAlert[]) => {
+    try {
+      for (const alert of alerts) {
+        const activeSubs = await db
+          .select()
+          .from(notifications)
+          .where(and(eq(notifications.target, alert.repoFullName), eq(notifications.isEnabled, true)));
+
+        for (const sub of activeSubs) {
+          if (sub.type !== "security_alert" && sub.type !== "github_release") continue;
+
+          const guild = await client.guilds.fetch(sub.guildId).catch(() => null);
+          if (!guild) continue;
+
+          const channel =
+            guild.channels.cache.get(sub.channelId) ||
+            (await guild.channels.fetch(sub.channelId).catch(() => null));
+
+          if (channel && "send" in channel) {
+            const embed = createBaseEmbed(`${NF.warning} Dependency Alert: ${alert.repoFullName}`)
+              .setColor(0xf5a97f)
+              .setDescription(
+                `**${alert.outdatedCount}** of ${alert.totalCount} packages are outdated.\n\n` +
+                  alert.outdatedPackages.map((p) => `• \`${p}\``).join("\n") +
+                  `\n\nRun \`npm outdated\` or \`bun outdated\` for full details.`,
+              )
+              .setFooter({ text: "GITBOT Dependency Watcher" });
+            await (channel as SendableChannel).send({ embeds: [embed] });
+          }
+        }
+      }
+    } catch (err: unknown) {
+      logger.error({ err }, "Failed to deliver dependency alert");
     }
   });
 
